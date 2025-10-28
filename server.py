@@ -17,6 +17,7 @@ import numpy as np
 import websockets
 
 from py.load_files import get_file_content
+from py.sherpa_asr import sherpa_recognize
 # 在程序最开始设置
 if hasattr(sys, '_MEIPASS'):
     # 打包后的程序
@@ -4022,6 +4023,7 @@ async def asr_websocket_endpoint(websocket: WebSocket):
                     "type": "init_response",
                     "status": "ready"
                 })
+                print("ASR WebSocket connected:",asr_engine)
             elif msg_type == "audio_start":
                 frame_id = message.get("id")
                 # 加载设置
@@ -4163,6 +4165,17 @@ async def asr_websocket_endpoint(websocket: WebSocket):
                                 except websockets.exceptions.ConnectionClosed:
                                     print("FunASR连接已关闭，无法发送结束信号")
                             funasr_websocket = None
+
+                        elif asr_engine == "sherpa":
+                            # 新增Sherpa处理
+                            result = await sherpa_recognize(audio_bytes)
+                            print(f"Sherpa result: {result}")
+                            await websocket.send_json({
+                                "type": "transcription",
+                                "id": frame_id,
+                                "text": result,
+                                "is_final": True
+                            })
                     except WebSocketDisconnect:
                         print(f"ASR WebSocket disconnected: {connection_id}")
                     except Exception as e:

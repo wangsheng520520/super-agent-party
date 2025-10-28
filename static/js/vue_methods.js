@@ -9137,7 +9137,6 @@ clearSegments() {
       this.sidePanelURL = '';
     } catch (error) {
       console.error('扫描扩展出错:', error);
-      showNotification('扫描扩展出错: ' + error.message, 'error');
     }
   },
   
