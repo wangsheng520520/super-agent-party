@@ -205,7 +205,7 @@
     },
     "asrSettings": {
       "enabled": false,
-      "engine": "webSpeech",
+      "engine": "sherpa",
       "selectedProvider": null,
       "webSpeechLanguage": "auto",
       "vendor": "OpenAI",

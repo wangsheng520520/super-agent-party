@@ -9137,7 +9137,6 @@ clearSegments() {
       this.sidePanelURL = '';
     } catch (error) {
       console.error('扫描扩展出错:', error);
-      showNotification('扫描扩展出错: ' + error.message, 'error');
     }
   },
   
@@ -9282,7 +9281,7 @@ clearSegments() {
           installed: extensions.some(l => l.repository.trim() === r.repository.trim()),
         }));
       } catch (e) {
-        showNotification('获取插件列表失败: ' + e.message, 'error');
+        
       }
     },
   async togglePlugin(plugin) {
@@ -9566,5 +9565,52 @@ clearSegments() {
       // 非Electron环境或API不可用，使用普通方式
       window.open(url, '_blank');
     }
+  },
+  async sherpaModelStatus() {
+    const res = await fetch('/sherpa-model/status')
+    if (!res.ok) return
+    const { exists, model } = await res.json()
+    this.sherpaModelExists = exists
+    this.sherpaModelName  = model ?? ''   // 后端没返回时留空
+  },
+
+  async sherpaDownload(source = 'modelscope') {
+    if (this.sherpaEventSource) this.sherpaEventSource.close()
+    this.sherpaDownloading = true
+    this.sherpaPercent = 0
+    const es = new EventSource(`/sherpa-model/download/${source}`)
+    this.sherpaEventSource = es
+    es.onmessage = e => {
+      if (e.data === 'close') {
+        es.close()
+        this.sherpaDownloading = false
+        this.sherpaPercent = 100
+        this.sherpaModelStatus()
+        showNotification(this.t('modelDownloadSuccess'))
+        return
+      }
+      const { done, total } = JSON.parse(e.data)
+      this.sherpaPercent = total ? Math.round((done / total) * 100) : 0
+    }
+    es.onerror = () => {
+      es.close()
+      this.sherpaDownloading = false
+      showNotification(this.t('modelDownloadFailed'), 'error')
+    }
+  },
+
+  async sherpaRemove() {
+    try {
+      const res = await fetch('/sherpa-model/remove', { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      showNotification(this.t('deleteSuccess'))
+      this.sherpaModelStatus()
+    } catch {
+      showNotification(this.t('deleteFailed'),'error')
+    }
+  },
+
+  async loadSherpaStatus() {
+    await this.sherpaModelStatus()
   },
 }

@@ -4022,6 +4022,7 @@ async def asr_websocket_endpoint(websocket: WebSocket):
                     "type": "init_response",
                     "status": "ready"
                 })
+                print("ASR WebSocket connected:",asr_engine)
             elif msg_type == "audio_start":
                 frame_id = message.get("id")
                 # 加载设置
@@ -4163,6 +4164,18 @@ async def asr_websocket_endpoint(websocket: WebSocket):
                                 except websockets.exceptions.ConnectionClosed:
                                     print("FunASR连接已关闭，无法发送结束信号")
                             funasr_websocket = None
+
+                        elif asr_engine == "sherpa":
+                            from py.sherpa_asr import sherpa_recognize
+                            # 新增Sherpa处理
+                            result = await sherpa_recognize(audio_bytes)
+                            print(f"Sherpa result: {result}")
+                            await websocket.send_json({
+                                "type": "transcription",
+                                "id": frame_id,
+                                "text": result,
+                                "is_final": True
+                            })
                     except WebSocketDisconnect:
                         print(f"ASR WebSocket disconnected: {connection_id}")
                     except Exception as e:
@@ -6439,6 +6452,9 @@ async def websocket_endpoint(websocket: WebSocket):
 from py.extensions import router as extensions_router
 
 app.include_router(extensions_router)
+
+from py.sherpa_model_manager import router as sherpa_model_router
+app.include_router(sherpa_model_router)
 
 mcp = FastApiMCP(
     app,

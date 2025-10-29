@@ -4017,3 +4017,27 @@ body {
   display: flex;
   justify-content: flex-end;
 }
+
+.sherpa-card {
+  margin-top: 12px;
+  border-radius: 24px;          /* 整体圆角 */
+  overflow: hidden;             /* 确保 header 圆角不被内容顶破 */
+  cursor: pointer;
+  transition: all 0.3s;
+  background-color: var(--el-bg-color-page)!important;
+  color: var(--el-text-color-primary)!important;
+}
+
+.sherpa-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.left-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-actions .el-button:last-child {
+  margin-left: auto;       /* 把删除按钮顶到最右边 */
+}
