@@ -447,9 +447,10 @@ let vue_data = {
     sherpaDownloading: false,             // 是否正在下载
     sherpaPercent: 0,                     // 实时进度 0-100
     sherpaEventSource: null,               // 当前 SSE 实例
+    sherpaModelName: '',                 // 模型名称
     asrSettings: {
       enabled: false,
-      engine: 'webSpeech',
+      engine: 'sherpa',
       selectedProvider: null,
       webSpeechLanguage: 'auto',
       vendor: "OpenAI",

@@ -9566,12 +9566,12 @@ clearSegments() {
       window.open(url, '_blank');
     }
   },
-  /* ====== Sherpa 模型管理 ====== */
   async sherpaModelStatus() {
     const res = await fetch('/sherpa-model/status')
     if (!res.ok) return
-    const { exists } = await res.json()
+    const { exists, model } = await res.json()
     this.sherpaModelExists = exists
+    this.sherpaModelName  = model ?? ''   // 后端没返回时留空
   },
 
   async sherpaDownload(source = 'modelscope') {
@@ -9586,7 +9586,7 @@ clearSegments() {
         this.sherpaDownloading = false
         this.sherpaPercent = 100
         this.sherpaModelStatus()
-        this.$message.success('模型下载完成')
+        showNotification(this.t('modelDownloadSuccess'))
         return
       }
       const { done, total } = JSON.parse(e.data)
@@ -9595,7 +9595,7 @@ clearSegments() {
     es.onerror = () => {
       es.close()
       this.sherpaDownloading = false
-      this.$message.error('下载出错')
+      showNotification(this.t('modelDownloadFailed'), 'error')
     }
   },
 
@@ -9603,15 +9603,11 @@ clearSegments() {
     try {
       const res = await fetch('/sherpa-model/remove', { method: 'DELETE' })
       if (!res.ok) throw new Error()
-      this.$message.success('已删除')
+      showNotification(this.t('deleteSuccess'))
       this.sherpaModelStatus()
     } catch {
-      this.$message.error('删除失败')
+      showNotification(this.t('deleteFailed'),'error')
     }
-  },
-
-  sherpaReDownload() {
-    this.sherpaDownload('modelscope')
   },
 
   async loadSherpaStatus() {

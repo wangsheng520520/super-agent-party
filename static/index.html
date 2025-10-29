@@ -4062,50 +4062,68 @@ if ('serviceWorker' in navigator) {
                       </el-form-item>
                     </div>
                   </div>
-                  <div class="tool-item" v-show="asrSettings.engine === 'sherpa'">
-                    <h3 v-if="sherpaModelExists" style="text-align:center;">
-                      {{t('modelExist')}}
-                    </h3>
-                    <el-form-item class="form-item-align">
-                    <el-button
-                      type="primary"
-                      :disabled="sherpaModelExists || sherpaDownloading"
-                      class="add-server-btn"
-                      :loading="sherpaDownloading && source==='modelscope'"
-                      @click="sherpaDownload('modelscope')"
-                    >{{t('downloadFromModelScope')}}</el-button>
-                    </el-form-item>
-                    <el-form-item class="form-item-align">
-                    <el-button
-                      type="primary"
-                      class="add-server-btn"
-                      :disabled="sherpaModelExists || sherpaDownloading"
-                      :loading="sherpaDownloading && source==='huggingface'"
-                      @click="sherpaDownload('huggingface')"
-                    >{{t('downloadFromHuggingFace')}}</el-button>
-                    </el-form-item>
+                  <!-- Sherpa ONNX Sense Voice 卡片 -->
+                  <el-card
+                    v-show="asrSettings.engine === 'sherpa'"
+                    shadow="hover"
+                    class="sherpa-card"
+                  >
+                    <!-- 卡片头部：标题 + 安装状态 -->
+                    <template #header>
+                      <div class="card-header">
+                        <span><strong>Sherpa ONNX Sense Voice</strong></span>
+                        <el-tag
+                          :type="sherpaModelExists ? 'success' : 'info'"
+                          effect="dark"
+                        >
+                          {{ sherpaModelExists ? t('installed') : t('notInstalled') }}
+                        </el-tag>
+                      </div>
+                    </template>
 
+                    <!-- 操作按钮区 -->
+                    <div class="card-actions">
+                      <!-- 左侧：两个下载按钮 -->
+                      <div class="left-actions">
+                        <el-button
+                          type="primary"
+                          :disabled="sherpaModelExists || sherpaDownloading"
+                          :loading="sherpaDownloading && source==='modelscope'"
+                          @click="sherpaDownload('modelscope')"
+                        >
+                          {{ t('downloadFromModelScope') }}
+                        </el-button>
+
+                        <el-button
+                          type="primary"
+                          :disabled="sherpaModelExists || sherpaDownloading"
+                          :loading="sherpaDownloading && source==='huggingface'"
+                          @click="sherpaDownload('huggingface')"
+                        >
+                          {{ t('downloadFromHuggingFace') }}
+                        </el-button>
+                      </div>
+
+                      <!-- 右侧：删除按钮 -->
+                      <el-button
+                        v-if="sherpaModelExists"
+                        type="danger"
+                        @click="sherpaRemove"
+                      >
+                        {{ t('deleteModel') }}
+                      </el-button>
+                    </div>
+
+
+                    <!-- 进度条（固定在底部） -->
                     <el-progress
                       v-if="sherpaDownloading"
                       :percentage="sherpaPercent"
-                      style="margin-top:12px"
+                      style="margin-top: 16px;"
                       :stroke-width="10"
-                    ></el-progress>
+                    />
+                  </el-card>
 
-                    <div v-if="sherpaModelExists">
-                      <el-form-item class="form-item-align">
-                        <el-button type="danger" class="add-server-btn" @click="sherpaRemove">{{t('deleteModel')}}</el-button>
-                      </el-form-item>
-                      <el-form-item class="form-item-align">
-                        <el-button
-                          type="info"
-                          class="add-server-btn"
-                          :disabled="sherpaDownloading"
-                          @click="sherpaReDownload"
-                        >{{t('Re-download')}}</el-button>
-                      </el-form-item>
-                    </div>
-                  </div>
 
                   <div class="tool-item" v-show="asrSettings.engine === 'webSpeech'">
                     <div class="tool-header">
