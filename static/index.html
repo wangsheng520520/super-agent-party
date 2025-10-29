@@ -4069,17 +4069,15 @@ if ('serviceWorker' in navigator) {
                     class="sherpa-card"
                   >
                     <!-- 卡片头部：标题 + 安装状态 -->
-                    <template #header>
-                      <div class="card-header">
-                        <span><strong>Sherpa ONNX Sense Voice</strong></span>
-                        <el-tag
-                          :type="sherpaModelExists ? 'success' : 'info'"
-                          effect="dark"
-                        >
-                          {{ sherpaModelExists ? t('installed') : t('notInstalled') }}
-                        </el-tag>
-                      </div>
-                    </template>
+                    <div class="card-header">
+                      <span><strong>Sherpa ONNX Sense Voice</strong></span>
+                      <el-tag
+                        :type="sherpaModelExists ? 'success' : 'info'"
+                        effect="dark"
+                      >
+                        {{ sherpaModelExists ? t('installed') : t('notInstalled') }}
+                      </el-tag>
+                    </div>
 
                     <!-- 操作按钮区 -->
                     <div class="card-actions">
