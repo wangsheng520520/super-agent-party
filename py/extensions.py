@@ -23,6 +23,7 @@ class Extension(BaseModel):
     author: str = "未知"
     systemPrompt: str = ""
     repository: str = ""
+    backupRepository: Optional[str] = ""
     category: str = ""
     transparent: bool = False
     width: int = 800
@@ -120,43 +121,84 @@ async def delete_extension(ext_id: str):
 class GitHubInstallRequest(BaseModel):
     url: str          # 支持 https://github.com/owner/repo 或 直接 zip 下载地址
 
-def _run_bg_install(url: str, ext_id: str):
-    """后台任务：下载/克隆并解压到 EXT_DIR/ext_id"""
+def _run_bg_install(repo_url: str, ext_id: str):
+    """
+    repo_url 可能是
+      1) GitHub 仓库首页  https://github.com/owner/repo
+      2) GitHub zip 包地址 https://github.com/owner/repo/archive/refs/heads/main.zip
+      3) Gitee 仓库首页   https://gitee.com/owner/repo
+      4) Gitee zip 包地址 …
+    如果 ext_dir 里已经有 package.json 并且写了 backupRepository，
+    就把主仓库和备用仓库组成一个 list，顺序尝试，成功即跳出。
+    """
     target = Path(EXT_DIR) / ext_id
     target.parent.mkdir(parents=True, exist_ok=True)
     temp_dir = Path(tempfile.mkdtemp())
 
-    try:
-        if url.endswith(".zip"):
-            zip_path = temp_dir / "repo.zip"
-            # 下载
-            with httpx.stream("GET", url, follow_redirects=True) as resp:
-                resp.raise_for_status()
-                with open(zip_path, "wb") as f:
-                    for chunk in resp.iter_bytes():
-                        f.write(chunk)
-            # 解压
-            shutil.unpack_archive(zip_path, temp_dir)
-            # GitHub zip 解压后多一层 repo-name 目录
-            inner = next(temp_dir.iterdir())
-            if inner.is_dir() and inner.name != "repo.zip":
-                shutil.move(str(inner), str(target))
-        else:
-            # git clone
-            subprocess.run(
-                ["git", "clone", url, str(temp_dir / "repo")],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            shutil.move(str(temp_dir / "repo"), str(target))
-    except Exception as e:
-        # 出错时清理半成品
-        if target.exists():
-            shutil.rmtree(target)
-        raise e
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
+    # --------------- 组装“主 + 备” 地址列表 ---------------
+    # 先读本地 package.json（如果已存在，可能是更新场景）
+    pkg_file = target / "package.json"
+    backup: str = ""
+    if pkg_file.exists():
+        try:
+            backup = json.loads(pkg_file.read_text(encoding="utf-8")).get("backupRepository", "")
+        except Exception:
+            pass
+
+    urls: List[str] = []
+    # 主仓库
+    if repo_url.strip():
+        urls.append(repo_url.strip().rstrip("/"))
+    # 备用仓库
+    if backup.strip():
+        urls.append(backup.strip().rstrip("/"))
+
+    if not urls:
+        raise RuntimeError("没有任何可用仓库地址")
+
+    # --------------- 顺序尝试克隆 / 下载 ---------------
+    last_err: Exception | None = None
+    for url in urls:
+        try:
+            _do_single_install(url, temp_dir, target)
+            # 成功就直接返回，外层不会走到 except
+            return
+        except Exception as e:
+            last_err = e
+            continue
+
+    # 所有地址都失败
+    if target.exists():
+        robust_rmtree(target)
+    shutil.rmtree(temp_dir, ignore_errors=True)
+    raise RuntimeError(f"主/备仓库均安装失败：{last_err}")
+
+
+def _do_single_install(url: str, temp_dir: Path, target: Path):
+    """真正执行一次下载或克隆"""
+    # 下载 zip 包
+    if url.endswith(".zip"):
+        zip_path = temp_dir / "repo.zip"
+        with httpx.stream("GET", url, follow_redirects=True) as resp:
+            resp.raise_for_status()
+            with open(zip_path, "wb") as f:
+                for chunk in resp.iter_bytes():
+                    f.write(chunk)
+        shutil.unpack_archive(zip_path, temp_dir)
+        inner = next(d for d in temp_dir.iterdir() if d.is_dir() and d.name != "repo.zip")
+        if inner.exists():
+            shutil.move(str(inner), str(target))
+    else:
+        # git clone
+        clone_dir = temp_dir / "repo"
+        subprocess.run(
+            ["git", "clone", url, str(clone_dir)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        shutil.move(str(clone_dir), str(target))
+
 
 @router.post("/install-from-github")
 async def install_from_github(
