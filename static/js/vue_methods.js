@@ -509,7 +509,7 @@ let vue_methods = {
       this.maximizeWindow();
     },
     //  使用占位符处理 LaTeX 公式
-    formatMessage(content) {
+    formatMessage(content,index) {
       const parts = this.splitCodeAndText(content);
       let latexPlaceholderCounter = 0;
       const latexPlaceholders = [];
@@ -568,6 +568,11 @@ let vue_methods = {
           })
           .catch(console.error);
       });
+
+
+      if (index == this.messages.length - 1 && this.messages[index].role === 'assistant' && this.messages[index]?.briefly && this.messages[index]?.content != this.messages[index]?.pure_content&&this.isTyping) {
+        rendered = `<i class="fa-solid fa-lightbulb">${this.t('thinking')}</i><br>` + rendered
+      }
 
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = rendered;
@@ -1635,7 +1640,6 @@ let vue_methods = {
                   
                   // 追加内容到高亮块
                   lastMessage.content += newContent;
-                  lastMessage.briefly = false;
                   
                   this.scrollToBottom();
                 }
@@ -1650,7 +1654,6 @@ let vue_methods = {
                     this.fileLinks.push(parsed.choices[0].delta.tool_link);
                   }
                   lastMessage.content += parsed.choices[0].delta.tool_content + '\n\n';
-                  lastMessage.briefly = false;
                   this.scrollToBottom();
                 }
                 // 处理 content 逻辑
@@ -4602,10 +4605,12 @@ let vue_methods = {
         // 如果this.messages中第二个元素是开场白，则替换，否则在第一个元素之后插入
         if (this.messages.length > 1 && this.messages[1].role === 'assistant') {
           this.messages[1].content = greetings[randomIndex];
+          this.messages[1].pure_content = greetings[randomIndex];
         } else {
           this.messages.splice(1, 0, {
             role: 'assistant',
-            content: greetings[randomIndex]
+            content: greetings[randomIndex],
+            pure_content: greetings[randomIndex],
           });
         }
       } 
