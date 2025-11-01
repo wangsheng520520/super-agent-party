@@ -1067,6 +1067,8 @@ key3`,
         'thinking': '思考中...',
         'update': '更新',
         'downloadNodeJS': '下载NodeJS',
+        'webBilibiliInfo': 'web端模式仅供学习交流使用，请勿用于实际生产环境，如需长期稳定使用，请将直播类型选择为B站直播开放平台模式',
+        'QQbotNotice':'使用前，请查看AIGC接入QQ机器人须知'
     },
     'en-US': {
         'chat': 'Chat',
@@ -2133,5 +2135,7 @@ Key3`,
         'thinking': 'Thinking...',
         'update': 'Update',
         'downloadNodeJS': 'Download NodeJS',
+        'webBilibiliInfo': 'The web mode is for learning and communication purposes only. Please do not use it in actual production environments. For long-term stable usage, please select the Bilibili Live Open Platform mode as the live streaming type.',
+        'QQbotNotice':'Before use, please read the AIGC QQ Bot Access Guidelines',
     },
   };

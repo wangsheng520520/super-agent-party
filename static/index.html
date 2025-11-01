@@ -7869,6 +7869,16 @@ if ('serviceWorker' in navigator) {
                                 <i class="fa-solid fa-key"></i>
                               </el-icon>{{ t('gotoQQbot') }}
                             </el-link>
+                            <el-link
+                              type="primary"
+                              :underline="false"
+                              href="https://q.qq.com/#/news/detail?id=1376238e8e2fbbc036676bb09d2f37da" 
+                              target="_blank"
+                            >
+                              <el-icon class="mr-1">
+                                <i class="fa-solid fa-key"></i>
+                              </el-icon>{{ t('QQbotNotice') }}
+                            </el-link>
                           </span>
                           <div>
                             <!-- 启动按钮 -->
@@ -9137,6 +9147,18 @@ if ('serviceWorker' in navigator) {
                                 @change="autoSaveSettings"
                               />
                             </el-form-item>
+                            <el-alert
+                              type="info"
+                              :closable="false"
+                              class="mb-2"
+                              v-if="liveConfig.bilibili_type === 'web'"
+                            >
+                              <template #default>
+                                <div class="alert-content">
+                                  {{ t('webBilibiliInfo') }}
+                                </div>
+                              </template>
+                            </el-alert>
                             <el-form-item label="ACCESS KEY ID" v-if="liveConfig.bilibili_type === 'open_live'">
                               <el-input
                                 v-model="liveConfig.bilibili_ACCESS_KEY_ID"
