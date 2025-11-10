@@ -5246,26 +5246,13 @@ if ('serviceWorker' in navigator) {
 
               <!-- 浏览器控制界面 -->
               <div v-show="subMenu === 'chromeMCP'" class="page">
-                <!-- Node.js 卡片：已安装 & 未安装 双状态 -->
+                 <!-- Node.js 卡片：已安装 & 未安装 双状态 -->
                 <el-card shadow="hover" class="sherpa-card">
                   <!-- 头部：标题 + 状态标签 -->
                   <div class="card-header d-flex justify-content-between align-items-center">
                     <span><strong>Node.js</strong></span>
 
                     <div class="d-flex gap-2">
-                      <el-tag v-if="!nodeInstalled" type="info" effect="dark">
-                        {{ t('notInstalled') }}
-                      </el-tag>
-                      <el-tag v-else type="success" effect="dark">
-                        <i class="fa-solid fa-circle-check"></i>
-                        {{ t('installed') }}
-                      </el-tag>
-                    </div>
-                  </div>
-
-                  <!-- 操作区 -->
-                  <div class="card-actions">
-                    <div class="left-actions">
                       <el-button
                         v-if="!nodeInstalled"
                         type="primary"
@@ -5275,6 +5262,10 @@ if ('serviceWorker' in navigator) {
                         <i class="fa-solid fa-download"></i>
                         {{ t('installNode') }}
                       </el-button>
+                      <el-tag v-else type="success" effect="dark" size="large">  
+                        <i class="fa-solid fa-circle-check"></i>
+                        {{ t('installed') }}
+                      </el-tag>
                     </div>
                   </div>
 
@@ -5342,19 +5333,6 @@ if ('serviceWorker' in navigator) {
                     <span><strong>UV</strong></span>
 
                     <div class="d-flex gap-2">
-                      <el-tag v-if="!uvInstalled" type="info" effect="dark">
-                        {{ t('notInstalled') }}
-                      </el-tag>
-                      <el-tag v-else type="success" effect="dark">
-                        <i class="fa-solid fa-circle-check"></i>
-                        {{ t('installed') }}
-                      </el-tag>
-                    </div>
-                  </div>
-
-                  <!-- 操作区 -->
-                  <div class="card-actions">
-                    <div class="left-actions">
                       <el-button
                         v-if="!uvInstalled"
                         type="primary"
@@ -5364,6 +5342,10 @@ if ('serviceWorker' in navigator) {
                         <i class="fa-solid fa-download"></i>
                         {{ t('installUv') }}
                       </el-button>
+                      <el-tag v-else type="success" effect="dark" size="large">
+                        <i class="fa-solid fa-circle-check"></i>
+                        {{ t('installed') }}
+                      </el-tag>
                     </div>
                   </div>
 
@@ -9514,19 +9496,6 @@ if ('serviceWorker' in navigator) {
                     <span><strong>Node.js</strong></span>
 
                     <div class="d-flex gap-2">
-                      <el-tag v-if="!nodeInstalled" type="info" effect="dark">
-                        {{ t('notInstalled') }}
-                      </el-tag>
-                      <el-tag v-else type="success" effect="dark">
-                        <i class="fa-solid fa-circle-check"></i>
-                        {{ t('installed') }}
-                      </el-tag>
-                    </div>
-                  </div>
-
-                  <!-- 操作区 -->
-                  <div class="card-actions">
-                    <div class="left-actions">
                       <el-button
                         v-if="!nodeInstalled"
                         type="primary"
@@ -9536,6 +9505,10 @@ if ('serviceWorker' in navigator) {
                         <i class="fa-solid fa-download"></i>
                         {{ t('installNode') }}
                       </el-button>
+                      <el-tag v-else type="success" effect="dark" size="large">  
+                        <i class="fa-solid fa-circle-check"></i>
+                        {{ t('installed') }}
+                      </el-tag>
                     </div>
                   </div>
 
@@ -9555,19 +9528,6 @@ if ('serviceWorker' in navigator) {
                     <span><strong>UV</strong></span>
 
                     <div class="d-flex gap-2">
-                      <el-tag v-if="!uvInstalled" type="info" effect="dark">
-                        {{ t('notInstalled') }}
-                      </el-tag>
-                      <el-tag v-else type="success" effect="dark">
-                        <i class="fa-solid fa-circle-check"></i>
-                        {{ t('installed') }}
-                      </el-tag>
-                    </div>
-                  </div>
-
-                  <!-- 操作区 -->
-                  <div class="card-actions">
-                    <div class="left-actions">
                       <el-button
                         v-if="!uvInstalled"
                         type="primary"
@@ -9577,6 +9537,10 @@ if ('serviceWorker' in navigator) {
                         <i class="fa-solid fa-download"></i>
                         {{ t('installUv') }}
                       </el-button>
+                      <el-tag v-else type="success" effect="dark" size="large">
+                        <i class="fa-solid fa-circle-check"></i>
+                        {{ t('installed') }}
+                      </el-tag>
                     </div>
                   </div>
 
@@ -9600,21 +9564,24 @@ if ('serviceWorker' in navigator) {
 
                     <div class="d-flex gap-2">
                       <!-- 未安装 -->
-                      <el-tag
+                      <el-button
                         v-if="!gitInstalled"
-                        type="info"
-                        effect="dark"
+                        type="primary"
+                        :loading="gitInstalling"
+                        @click="installGit"
                       >
-                        {{ t('notInstalled') }}
-                      </el-tag>
+                        <i class="fa-solid fa-download"></i>
+                        {{ t('installGit') }}
+                      </el-button>
 
                       <!-- 已安装 -->
                       <el-tag
                         v-else
                         type="success"
                         effect="dark"
+                        size="large"
                       >
-                        <i class="fa-solid fa-circle-check"></i>
+                      <i class="fa-solid fa-circle-check"></i>
                         {{ t('installed') }}
                       </el-tag>
                     </div>
@@ -9747,21 +9714,24 @@ if ('serviceWorker' in navigator) {
 
                     <div class="d-flex gap-2">
                       <!-- 未安装 -->
-                      <el-tag
+                      <el-button
                         v-if="!gitInstalled"
-                        type="info"
-                        effect="dark"
+                        type="primary"
+                        :loading="gitInstalling"
+                        @click="installGit"
                       >
-                        {{ t('notInstalled') }}
-                      </el-tag>
+                        <i class="fa-solid fa-download"></i>
+                        {{ t('installGit') }}
+                      </el-button>
 
                       <!-- 已安装 -->
                       <el-tag
                         v-else
                         type="success"
                         effect="dark"
+                        size="large"
                       >
-                        <i class="fa-solid fa-circle-check"></i>
+                      <i class="fa-solid fa-circle-check"></i>
                         {{ t('installed') }}
                       </el-tag>
                     </div>
