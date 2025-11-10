@@ -3651,14 +3651,14 @@ if ('serviceWorker' in navigator) {
                           <!-- 动态输入组件 -->
                           <div class="value-input">
                             <el-input
-                              v-show="param.type === 'string'"
+                              v-if="param.type === 'string'"
                               v-model="param.value"
                               :placeholder="t('paramValue')"
                               @input="autoSaveSettings"
                             ></el-input>
                           
                             <el-input-number
-                              v-show="param.type === 'integer'"
+                              v-if="param.type === 'integer'"
                               v-model="param.value"
                               :step="1"         
                               :precision="0"   
@@ -3666,7 +3666,7 @@ if ('serviceWorker' in navigator) {
                             ></el-input-number>
                           
                             <el-input-number
-                              v-show="param.type === 'float'"
+                              v-if="param.type === 'float'"
                               v-model="param.value"
                               :step="0.5"      
                               :precision="2"    
@@ -3674,7 +3674,7 @@ if ('serviceWorker' in navigator) {
                             ></el-input-number>
       
                             <el-switch 
-                              v-show="param.type === 'boolean'" 
+                              v-if="param.type === 'boolean'" 
                               v-model="param.value" 
                               @change="autoSaveSettings"
                             ></el-switch>
