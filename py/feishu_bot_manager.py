@@ -871,6 +871,32 @@ class FeishuClient:
 
 
 
+    def clean_markdown(self, buffer):
+        # Remove heading marks (#, ##, ### etc.)
+        buffer = re.sub(r'#{1,6}\s', '', buffer, flags=re.MULTILINE)
+        
+        # Remove single Markdown formatting characters (*_~`) but keep if they appear consecutively
+        buffer = re.sub(r'[*_~`]+', '', buffer)
+        
+        # Remove list item marks (- or * at line start)
+        buffer = re.sub(r'^\s*[-*]\s', '', buffer, flags=re.MULTILINE)
+        
+        # Remove emoji and other Unicode symbols
+        buffer = re.sub(r'[\u2600-\u27BF\u2700-\u27BF\U0001F300-\U0001F9FF]', '', buffer)
+        
+        # Remove Unicode surrogate pairs
+        buffer = re.sub(r'[\uD800-\uDBFF][\uDC00-\uDFFF]', '', buffer)
+        
+        # Remove image marks (![alt](url))
+        buffer = re.sub(r'!\[.*?\]\(.*?\)', '', buffer)
+        
+        # Remove link marks ([text](url)), keeping the text
+        buffer = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', buffer)
+        
+        # Remove leading/trailing whitespace
+        return buffer.strip()
+
+
     async def _send_voice(self, original_msg, text):
         """发送语音消息（opus专用版本）"""
         try:
@@ -878,7 +904,7 @@ class FeishuClient:
             settings = await load_settings()
             tts_settings = settings.get("ttsSettings", {})
             index = 0
-
+            text = self.clean_markdown(text)
             # 专门为飞书请求opus格式
             payload = {
                 "text": text,

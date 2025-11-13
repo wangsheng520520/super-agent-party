@@ -4924,48 +4924,44 @@ async def text_to_speech(request: Request):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"服务器内部错误: {str(e)}"})
 
+from pydub import AudioSegment
+from imageio_ffmpeg import get_ffmpeg_exe   # ① 关键：拿到捆绑的 ffmpeg
 
+# 让 pydub 使用我们自带的 ffmpeg，而不是去系统 PATH 里找
+AudioSegment.converter = get_ffmpeg_exe()
+print("get_ffmpeg_exe",get_ffmpeg_exe())
 async def convert_to_opus_simple(audio_data):
     """使用pydub将音频转换为opus格式（适合飞书）"""
     try:
-        from pydub import AudioSegment
         
-        # 从字节数据创建音频对象
-        audio_io = io.BytesIO(audio_data)
-        
-        # 尝试自动检测格式
         try:
-            audio = AudioSegment.from_file(audio_io)
-        except:
-            # 如果失败，尝试作为MP3处理
-            audio_io.seek(0)
-            try:
-                audio = AudioSegment.from_mp3(audio_io)
-            except:
-                # 最后尝试WAV
-                audio_io.seek(0)
-                audio = AudioSegment.from_wav(audio_io)
-        
-        # 设置飞书推荐的opus参数
-        audio = audio.set_frame_rate(16000)  # 16kHz采样率
-        audio = audio.set_channels(1)        # 单声道
-        
-        # 导出为opus格式，使用飞书兼容的参数
-        output_io = io.BytesIO()
+            # ② 先尝试用 pydub 自动探测格式
+            audio_io = io.BytesIO(audio_data)
+            audio = AudioSegment.from_file(audio_io)          # 会自动调用捆绑的 ffmpeg
+        except Exception as e:
+            logging.warning(f"pydub 自动探测失败({e})，降级为 WAV 假设")
+            audio_io = io.BytesIO(audio_data)
+            audio = AudioSegment.from_wav(audio_io)           # 纯 WAV 场景
+
+        # ③ 统一成飞书推荐参数
+        audio = (audio
+                .set_frame_rate(16000)
+                .set_channels(1))
+
+        # ④ 导出 opus
+        out_io = io.BytesIO()
         audio.export(
-            output_io, 
+            out_io,
             format="opus",
             codec="libopus",
-            parameters=[
-                "-b:a", "64k",           # 64kbps码率
-                "-application", "voip",   # 语音通话优化
-                "-compression_level", "3"  # 最高压缩
-            ]
+            parameters=["-b:a", "64k",
+                        "-application", "voip",
+                        "-compression_level", "3"]
         )
-        
-        opus_data = output_io.getvalue()
-        logging.info(f"成功转换为opus格式，原始: {len(audio_data)}B -> opus: {len(opus_data)}B")
+        opus_data = out_io.getvalue()
+        logging.info(f"Opus 转换完成：{len(audio_data)} B → {len(opus_data)} B")
         return opus_data
+
         
     except ImportError:
         logging.error("pydub未安装，无法转换为opus格式")

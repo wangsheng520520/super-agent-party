@@ -60,4 +60,5 @@ dependencies = [
     "google-api-python-client>=2.179.0",
     "lark-oapi>=1.4.24",
     "pydub>=0.25.1",
+    "imageio-ffmpeg>=0.6.0",
 ]
