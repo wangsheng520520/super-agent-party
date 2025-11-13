@@ -4959,7 +4959,7 @@ async def convert_to_opus_simple(audio_data):
             parameters=[
                 "-b:a", "64k",           # 64kbps码率
                 "-application", "voip",   # 语音通话优化
-                "-compression_level", "10"  # 最高压缩
+                "-compression_level", "3"  # 最高压缩
             ]
         )
         

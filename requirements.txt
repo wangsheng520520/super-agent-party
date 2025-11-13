@@ -47,3 +47,4 @@ soundfile
 nvidia-ml-py
 pip-licenses 
 lark_oapi
+pydub
