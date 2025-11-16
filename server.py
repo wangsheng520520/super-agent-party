@@ -257,8 +257,8 @@ async def lifespan(app: FastAPI):
             os.environ['http_proxy'] = settings["systemSettings"]["proxy"].strip()
             os.environ['https_proxy'] = settings["systemSettings"]["proxy"].strip()
         else:
-            os.environ['http_proxy'] = ''
-            os.environ['https_proxy'] = ''
+            os.environ.pop('http_proxy', None)
+            os.environ.pop('https_proxy', None)
     else:
         client = client_class()
         reasoner_client = reasoner_client_class()
