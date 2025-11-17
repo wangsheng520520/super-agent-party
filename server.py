@@ -1,6 +1,6 @@
 # -- coding: utf-8 --
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import glob
 from io import BytesIO
 import io
@@ -10,6 +10,9 @@ import pickle
 import socket
 import sys
 import tempfile
+import threading
+import aiohttp
+import aiofiles
 import faiss
 import httpx
 from scipy.io import wavfile
@@ -2708,7 +2711,7 @@ async def generate_complete_response(client,reasoner_client, request: ChatReques
                         "model": cur_memory['model'],
                         "api_key": cur_memory['api_key'],
                         "openai_base_url":cur_memory["base_url"],
-                        "embedding_dims":1024
+                        "embedding_dims":1024,
                     },
                 },
                 "llm": {

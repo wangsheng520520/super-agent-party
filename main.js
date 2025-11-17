@@ -1267,4 +1267,26 @@ app.on('web-contents-created', (e, webContents) => {
   });
 });
 
+// 禁用所有 WebContents 的前进/后退
+app.on('web-contents-created', (_event, wc) => {
+  // 1. 拦截鼠标侧键 / 触摸板手势
+  wc.on('input-event', (_ev, input) => {
+    // 浏览器侧键对应的 button 是 3（后退）和 4（前进）
+    if (input.type === 'mouseDown' && (input.button === 3 || input.button === 4)) {
+      // 阻止默认行为（相当于把事件吃掉）
+      wc.stopNavigation();
+      return;
+    }
+  });
+
+  // 2. 拦截 Alt+Left / Alt+Right 快捷键
+  wc.on('before-input-event', (_ev, input) => {
+    const { alt, key } = input;
+    if (alt && (key === 'Left' || key === 'Right')) {
+      // 标记为已处理，Electron 就不会再分发
+      input.preventDefault = true;
+    }
+  });
+});
+
 app.commandLine.appendSwitch('disable-http-cache')
