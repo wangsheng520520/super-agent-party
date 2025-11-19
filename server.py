@@ -12,6 +12,7 @@ import sys
 import tempfile
 import threading
 import aiohttp
+import aiofiles
 import faiss
 import httpx
 from scipy.io import wavfile
@@ -48,7 +49,6 @@ from py.mcp_clients import McpClient
 from contextlib import asynccontextmanager
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-import aiofiles
 import argparse
 from mem0 import Memory
 from py.qq_bot_manager import QQBotConfig, QQBotManager
@@ -2711,7 +2711,7 @@ async def generate_complete_response(client,reasoner_client, request: ChatReques
                         "model": cur_memory['model'],
                         "api_key": cur_memory['api_key'],
                         "openai_base_url":cur_memory["base_url"],
-                        "embedding_dims":1024
+                        "embedding_dims":1024,
                     },
                 },
                 "llm": {
@@ -4800,7 +4800,7 @@ async def text_to_speech(request: Request):
             )
             
         elif tts_engine == 'GSV':
-            # GSV本身可以直接生成opus
+            # GSV生成ogg格式，检查是否可以直接作为opus使用
             audio_path = os.path.join(UPLOAD_FILES_DIR, tts_settings.get('gsvRefAudioPath', ''))
             if not os.path.exists(audio_path):
                 audio_path = tts_settings.get('gsvRefAudioPath', '')
@@ -4815,7 +4815,7 @@ async def text_to_speech(request: Request):
                 "sample_steps": tts_settings.get('gsvSample_steps', 4),
                 "streaming_mode": True,
                 "text_split_method": "cut0",
-                "media_type": "opus" if target_format == "opus" else "ogg",
+                "media_type": "ogg",
                 "batch_size": 20,
                 "seed": 42,
             }
@@ -4832,12 +4832,15 @@ async def text_to_speech(request: Request):
                     try:
                         async with client.stream("POST", f"{gsvServer}/tts", json=gsv_params) as response:
                             response.raise_for_status()
+                            # 直接流式返回，不管目标格式（假设GSV的ogg内部是opus编码）
                             async for chunk in response.aiter_bytes():
                                 yield chunk
+                                
                     except httpx.HTTPStatusError as e:
                         error_detail = f"GSV服务错误: {e.response.status_code}"
                         raise HTTPException(status_code=502, detail=error_detail)
             
+            # 统一使用ogg媒体类型，但文件名根据目标格式调整
             media_type = "audio/ogg"
             filename = f"tts_{index}.opus" if target_format == "opus" else f"tts_{index}.ogg"
             
@@ -4860,7 +4863,8 @@ async def text_to_speech(request: Request):
                 'speed': tts_settings.get('openaiSpeed', 1.0),
                 'base_url': tts_settings.get('base_url', 'https://api.openai.com/v1'),
                 'prompt_text': tts_settings.get('gsvPromptText', ''),
-                'ref_audio': tts_settings.get('gsvRefAudioPath', '')
+                'ref_audio': tts_settings.get('gsvRefAudioPath', ''),
+                'streaming': tts_settings.get('openaiStream', False)
             }
             
             if not openai_config['api_key']:
@@ -4879,6 +4883,18 @@ async def text_to_speech(request: Request):
                         base_url=openai_config['base_url']
                     )
                     
+                    # 根据目标格式设置response_format
+                    response_format = target_format if target_format in ['mp3', 'opus', 'aac', 'flac', 'wav', 'pcm'] else 'mp3'
+                    
+                    # 准备请求参数
+                    request_params = {
+                        'model': openai_config['model'],
+                        'input': text,
+                        'speed': speed,
+                        'response_format': response_format
+                    }
+                    
+                    # 处理参考音频
                     if openai_config['ref_audio']:
                         audio_file_path = os.path.join(UPLOAD_FILES_DIR, openai_config['ref_audio'])
                         with open(audio_file_path, "rb") as audio_file:
@@ -4887,42 +4903,48 @@ async def text_to_speech(request: Request):
                         audio_base64 = base64.b64encode(audio_data).decode('utf-8')
                         audio_uri = f"data:audio/{audio_type};base64,{audio_base64}"
                         
-                        response = await client.audio.speech.create(
-                            model=openai_config['model'],
-                            voice=None,
-                            input=text,
-                            speed=speed,
-                            extra_body={
-                                "references":[{"text": openai_config['prompt_text'], "audio": audio_uri}]
-                            } 
-                        )
+                        request_params['voice'] = None
+                        request_params['extra_body'] = {
+                            "references": [{"text": openai_config['prompt_text'], "audio": audio_uri}]
+                        }
                     else:
-                        response = await client.audio.speech.create(
-                            model=openai_config['model'],
-                            voice=openai_config['voice'],
-                            input=text,
-                            speed=speed
-                        )
+                        request_params['voice'] = openai_config['voice']
                     
-                    content = await response.aread()
-                    
-                    # 转换为opus
-                    if target_format == "opus":
-                        opus_content = await convert_to_opus_simple(content)
-                        content = opus_content
-                    
-                    chunk_size = 4096
-                    for i in range(0, len(content), chunk_size):
-                        yield content[i:i + chunk_size]
-                        await asyncio.sleep(0)
+                    # 根据流式设置选择调用方式
+                    if openai_config['streaming']:
+                        # 流式模式 - 真正的流式，无需格式转换
+                        async with client.audio.speech.with_streaming_response.create(**request_params) as response:
+                            async for chunk in response.iter_bytes(chunk_size=4096):
+                                yield chunk
+                                await asyncio.sleep(0)
+                    else:
+                        # 非流式模式
+                        response = await client.audio.speech.create(**request_params)
+                        content = await response.aread()
                         
+                        # 分块返回
+                        chunk_size = 4096
+                        for i in range(0, len(content), chunk_size):
+                            yield content[i:i + chunk_size]
+                            await asyncio.sleep(0)
+                                
                 except Exception as e:
                     raise HTTPException(status_code=500, detail=f"OpenAI TTS错误: {str(e)}")
             
+            # 根据目标格式设置媒体类型和文件名
             if target_format == "opus":
-                media_type = "audio/ogg"
+                media_type = "audio/ogg"  # opus通常用ogg容器
                 filename = f"tts_{index}.opus"
-            else:
+            elif target_format == "wav":
+                media_type = "audio/wav"
+                filename = f"tts_{index}.wav"
+            elif target_format == "aac":
+                media_type = "audio/aac"
+                filename = f"tts_{index}.aac"
+            elif target_format == "flac":
+                media_type = "audio/flac"
+                filename = f"tts_{index}.flac"
+            else:  # mp3 或其他
                 media_type = "audio/mpeg"
                 filename = f"tts_{index}.mp3"
             
@@ -4935,6 +4957,8 @@ async def text_to_speech(request: Request):
                     "X-Audio-Format": target_format
                 }
             )
+
+
         
         raise HTTPException(status_code=400, detail="不支持的TTS引擎")
     

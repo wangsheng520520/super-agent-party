@@ -9003,6 +9003,11 @@ JSON 结构必须为：
       // 把结果写入 newMemory（不会自动保存，用户仍可手动改）
       Object.assign(this.newMemory, {
         name:        json.name        ?? '',
+        providerId: null, // 强制空
+        model: '',
+        base_url: '',
+        api_key: '',
+        vendor: '',
         description: json.description ?? '',
         personality: json.personality ?? '',
         mesExample:  json.mesExample  ?? '',
@@ -9645,7 +9650,9 @@ clearSegments() {
     this.sidePanelURL = '';
     this.showExtensionsDialog = false; // 关闭对话框
     this.currentExtension = extension;
-    this.messages[0].content = this.currentExtension.systemPrompt;
+    if (this.currentExtension.systemPrompt){
+      this.messages[0].content = this.currentExtension.systemPrompt;
+    }
     this.expandSidePanel();
     await this.loadExtension(extension);
   },
@@ -10126,7 +10133,8 @@ clearSegments() {
         // 后端已平铺，直接赋值
         this.vectorTable = await res.json()
       } catch (e) {
-        showNotification(this.t('loadFail') + ': ' + e.message, 'error')
+        this.vectorTable = []
+        console.error(e)
       } finally {
         this.vectorLoading = false
       }
