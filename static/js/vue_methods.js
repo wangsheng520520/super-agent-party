@@ -7435,7 +7435,7 @@ handleCreateDiscordSeparator(val) {
         // 自动保存设置
         await this.autoSaveSettings();
         
-        showNotification(t("VRMAactionDeleted"));
+        showNotification(this.t("VRMAactionDeleted"));
       } else {
         showNotification(`error: ${result.message}`, 'error');
       }
