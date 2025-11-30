@@ -2390,7 +2390,6 @@ if ('serviceWorker' in navigator) {
                       <el-button 
                         @click="showGsvRefAudioPathDialog = true;currentUploadType='audio'"
                         type="primary" 
-                        plain 
                         class="add-server-btn">
                         <i class="fa-solid fa-plus"></i> {{ t('addRefAudio') }}
                       </el-button>
@@ -2644,7 +2643,6 @@ if ('serviceWorker' in navigator) {
                         <el-button 
                           @click="showGsvRefAudioPathDialog = true;currentUploadType='audio'"
                           type="primary" 
-                          plain 
                           class="add-server-btn">
                           <i class="fa-solid fa-plus"></i> {{ t('addRefAudio') }}
                         </el-button>
@@ -2800,7 +2798,6 @@ if ('serviceWorker' in navigator) {
                         <el-button
                           @click="showVrmModelDialog = true"
                           type="primary"
-                          plain
                           class="add-server-btn"
                         >
                           <i class="fa-solid fa-plus"></i> {{ t('addVrmModel') }}
@@ -2854,7 +2851,6 @@ if ('serviceWorker' in navigator) {
                         <el-button
                           @click="showVrmaMotionDialog = true"
                           type="success"
-                          plain
                           class="add-server-btn"
                         >
                           <i class="fa-solid fa-plus"></i> {{ t('addVrmaMotion') }}
@@ -4685,7 +4681,6 @@ if ('serviceWorker' in navigator) {
                     <el-button 
                       @click="showGsvRefAudioPathDialog = true;currentUploadType='audio'"
                       type="primary" 
-                      plain 
                       class="add-server-btn">
                       <i class="fa-solid fa-plus"></i> {{ t('addRefAudio') }}
                     </el-button>
@@ -4940,7 +4935,6 @@ if ('serviceWorker' in navigator) {
                       <el-button 
                         @click="showGsvRefAudioPathDialog = true;currentUploadType='audio'"
                         type="primary" 
-                        plain 
                         class="add-server-btn">
                         <i class="fa-solid fa-plus"></i> {{ t('addRefAudio') }}
                       </el-button>
@@ -6579,7 +6573,7 @@ if ('serviceWorker' in navigator) {
                           <el-collapse-item name="advanced">
                             <template #title>
                               <div class="collapse-title">
-                                <span class="font-medium">{{ t('advancedSettings') }}</span>
+                                <span class="font-medium">{{ t('advancedSettingsClickExpand') }}</span>
                               </div>
                             </template>
 
@@ -6627,18 +6621,14 @@ if ('serviceWorker' in navigator) {
                       </el-form>
                       <!-- 文件上传区域 -->
                       <el-form-item>
-                        <div
-                          class="drop-zone"
-                          @dragover.prevent
-                          @drop.prevent="handleKbDrop"
+                        <el-button 
+                          type="primary"
                           @click="browseKbFiles"
+                          class="add-server-btn"
                         >
-                          <el-icon :size="50">
-                            <i class="fa-solid fa-upload"></i>
-                          </el-icon>
-                          <p>{{ t('clickOrDrop') }}</p>
-                        </div>
-
+                          <i class="fa-solid fa-upload"></i>
+                          {{t('uploadFile')}}
+                        </el-button>
                         <!-- 紧凑型文件列表 -->
                         <div class="compact-file-list" v-if="newKbFiles.length">
                           <div
@@ -6651,7 +6641,7 @@ if ('serviceWorker' in navigator) {
                               @click.stop="removeKbFile(index)"
                               class="delete-icon"
                               circle
-                            />
+                            >
                             <i class="fa-solid fa-trash"></i>
                             </el-button>
                           </div>
@@ -6842,7 +6832,6 @@ if ('serviceWorker' in navigator) {
                           <el-button 
                             @click="addComfyUIServer"
                             type="primary" 
-                            plain 
                             class="add-server-btn">
                             <i class="fa-solid fa-plus"></i> {{ t('addServer') }}
                           </el-button>
@@ -7625,44 +7614,19 @@ if ('serviceWorker' in navigator) {
                 </template>
               </el-alert>
             </div>
-            <div class="browser-mode-btn-container" v-show="isElectron">
-              <el-button
-                class="browser-mode-btn"
-                type="primary"
-                @click="openLogfile"
-                round
-                size="large">
-                <span class="ml-2">
-                  {{ t('openLogfile') }}
-                </span>
-              </el-button>
-            </div>
-            <div class="tool-item">
-              <el-alert
-                type="info"
-                :closable="false"
-                class="mb-2"
-              >
-                <template #default>
-                  <div class="alert-content">
-                    {{ t('logfileNotice') }}
-                  </div>
-                </template>
-              </el-alert>
-            </div>
-            <div class="browser-mode-btn-container" v-show="isElectron">
-              <el-button
-                class="browser-mode-btn"
-                type="primary"
-                @click="openUserfile"
-                round
-                size="large">
-                <span class="ml-2">
-                  {{ t('openUserfile') }}
-                </span>
-              </el-button>
-            </div>
-            <div class="tool-item">
+            <div class="tool-item" v-show="isElectron">
+              <div class="browser-mode-btn-container">
+                <el-button
+                  class="browser-mode-btn"
+                  type="primary"
+                  @click="openUserfile"
+                  round
+                  size="large">
+                  <span class="ml-2">
+                    {{ t('openUserfile') }}
+                  </span>
+                </el-button>
+              </div>
               <el-alert
                 type="info"
                 :closable="false"
@@ -9342,7 +9306,6 @@ if ('serviceWorker' in navigator) {
                               <el-button
                                 @click="showVrmModelDialog = true"
                                 type="primary"
-                                plain
                                 class="add-server-btn"
                               >
                                 <i class="fa-solid fa-plus"></i> {{ t('addVrmModel') }}
@@ -9396,7 +9359,6 @@ if ('serviceWorker' in navigator) {
                               <el-button
                                 @click="showVrmaMotionDialog = true"
                                 type="success"
-                                plain
                                 class="add-server-btn"
                               >
                                 <i class="fa-solid fa-plus"></i> {{ t('addVrmaMotion') }}
@@ -9459,7 +9421,6 @@ if ('serviceWorker' in navigator) {
                               <el-button
                                 @click="showGaussSceneDialog = true"
                                 type="warning"
-                                plain
                                 class="add-server-btn"
                               >
                                 <i class="fa-solid fa-plus"></i> {{ t('addGaussScene') }}
@@ -9480,149 +9441,147 @@ if ('serviceWorker' in navigator) {
                               </template>
                             </el-alert>
                         </div>
-
-                        <!-- VRM模型上传对话框 -->
-                        <el-dialog
-                          v-model="showVrmModelDialog"
-                          :title="t('uploadVrmModel')"
-                          width="600px"
-                        >
-                          <div class="upload-container">
-                            <div
-                              class="drop-zone"
-                              @dragover.prevent
-                              @drop.prevent="handleVrmModelDrop"
-                              @click="browseVrmModelFile"
-                            >
-                              <el-icon :size="50"><i class="fa-solid fa-upload"></i></el-icon>
-                              <p>{{ t('clickOrDropVrm') }}</p>
-                            </div>
-                            
-                            <!-- 文件列表 -->
-                            <div class="compact-file-list" v-if="newVrmModel.name">
-                              <div class="compact-file-item">
-                                <span class="file-name">{{ newVrmModel.name }}</span>
-                                <el-button
-                                  @click.stop="removeNewVrmModel"
-                                  class="delete-icon"
-                                  circle
-                                >
-                                  <i class="fa-solid fa-trash"></i>
-                                </el-button>
-                              </div>
-                            </div>
-
-                            <el-input
-                              v-model="newVrmModel.displayName"
-                              :label="t('modelDisplayName')"
-                              :placeholder="t('modelDisplayNamePlaceholder')"
-                              required
-                            />
-                          </div>
-                          <template #footer>
-                            <el-button @click="cancelVrmModelUpload">{{ t('cancel') }}</el-button>
-                            <el-button type="primary" @click="uploadVrmModel" :disabled="!newVrmModel.name">
-                              {{ t('createImmediately') }}
-                            </el-button>
-                          </template>
-                        </el-dialog>
-
-                        <!-- VRMA动作上传对话框 -->
-                        <el-dialog
-                          v-model="showVrmaMotionDialog"
-                          :title="t('uploadVrmaMotion')"
-                          width="600px"
-                        >
-                          <div class="upload-container">
-                            <div
-                              class="drop-zone"
-                              @dragover.prevent
-                              @drop.prevent="handleVrmaMotionDrop"
-                              @click="browseVrmaMotionFile"
-                            >
-                              <el-icon :size="50"><i class="fa-solid fa-upload"></i></el-icon>
-                              <p>{{ t('clickOrDropVrma') }}</p>
-                            </div>
-                            
-                            <!-- 文件列表 -->
-                            <div class="compact-file-list" v-if="newVrmaMotion.name">
-                              <div class="compact-file-item">
-                                <span class="file-name">{{ newVrmaMotion.name }}</span>
-                                <el-button
-                                  @click.stop="removeNewVrmaMotion"
-                                  class="delete-icon"
-                                  circle
-                                >
-                                  <i class="fa-solid fa-trash"></i>
-                                </el-button>
-                              </div>
-                            </div>
-
-                            <el-input
-                              v-model="newVrmaMotion.displayName"
-                              :label="t('motionDisplayName')"
-                              :placeholder="t('motionDisplayNamePlaceholder')"
-                              required
-                            />
-                          </div>
-                          <template #footer>
-                            <el-button @click="cancelVrmaMotionUpload">{{ t('cancel') }}</el-button>
-                            <el-button type="primary" @click="uploadVrmaMotion" :disabled="!newVrmaMotion.name">
-                              {{ t('createImmediately') }}
-                            </el-button>
-                          </template>
-                        </el-dialog>
-
-                        <!-- 高斯场景上传对话框  GAUSS -->
-                        <el-dialog
-                          v-model="showGaussSceneDialog"
-                          :title="t('uploadGaussScene')"
-                          width="600px"
-                        >
-                          <div class="upload-container">
-                            <div
-                              class="drop-zone"
-                              @dragover.prevent
-                              @drop.prevent="handleGaussSceneDrop"
-                              @click="browseGaussSceneFile"
-                            >
-                              <el-icon :size="50"><i class="fa-solid fa-upload"></i></el-icon>
-                              <p>{{ t('clickOrDropGaussScene') }}</p>
-                            </div>
-                            
-                            <!-- 文件列表 -->
-                            <div class="compact-file-list" v-if="newGaussScene.name">
-                              <div class="compact-file-item">
-                                <span class="file-name">{{ newGaussScene.name }}</span>
-                                <el-button
-                                  @click.stop="removeNewGaussScene"
-                                  class="delete-icon"
-                                  circle
-                                >
-                                  <i class="fa-solid fa-trash"></i>
-                                </el-button>
-                              </div>
-                            </div>
-
-                            <el-input
-                              v-model="newGaussScene.displayName"
-                              :label="t('GaussSceneDisplayName')"
-                              :placeholder="t('GaussSceneDisplayNamePlaceholder')"
-                              required
-                            />
-                          </div>
-                          <template #footer>
-                            <el-button @click="cancelGaussSceneUpload">{{ t('cancel') }}</el-button>
-                            <el-button type="primary" @click="uploadGaussScene" :disabled="!newGaussScene.name">
-                              {{ t('createImmediately') }}
-                            </el-button>
-                          </template>
-                        </el-dialog>
-
-
                       </div>
                     </el-form>
                   </div>
+
+                  <!-- VRM模型上传对话框 -->
+                  <el-dialog
+                    v-model="showVrmModelDialog"
+                    :title="t('uploadVrmModel')"
+                    width="600px"
+                  >
+                    <div class="upload-container">
+                      <div
+                        class="drop-zone"
+                        @dragover.prevent
+                        @drop.prevent="handleVrmModelDrop"
+                        @click="browseVrmModelFile"
+                      >
+                        <el-icon :size="50"><i class="fa-solid fa-upload"></i></el-icon>
+                        <p>{{ t('clickOrDropVrm') }}</p>
+                      </div>
+                      
+                      <!-- 文件列表 -->
+                      <div class="compact-file-list" v-if="newVrmModel.name">
+                        <div class="compact-file-item">
+                          <span class="file-name">{{ newVrmModel.name }}</span>
+                          <el-button
+                            @click.stop="removeNewVrmModel"
+                            class="delete-icon"
+                            circle
+                          >
+                            <i class="fa-solid fa-trash"></i>
+                          </el-button>
+                        </div>
+                      </div>
+
+                      <el-input
+                        v-model="newVrmModel.displayName"
+                        :label="t('modelDisplayName')"
+                        :placeholder="t('modelDisplayNamePlaceholder')"
+                        required
+                      />
+                    </div>
+                    <template #footer>
+                      <el-button @click="cancelVrmModelUpload">{{ t('cancel') }}</el-button>
+                      <el-button type="primary" @click="uploadVrmModel" :disabled="!newVrmModel.name">
+                        {{ t('createImmediately') }}
+                      </el-button>
+                    </template>
+                  </el-dialog>
+
+                  <!-- VRMA动作上传对话框 -->
+                  <el-dialog
+                    v-model="showVrmaMotionDialog"
+                    :title="t('uploadVrmaMotion')"
+                    width="600px"
+                  >
+                    <div class="upload-container">
+                      <div
+                        class="drop-zone"
+                        @dragover.prevent
+                        @drop.prevent="handleVrmaMotionDrop"
+                        @click="browseVrmaMotionFile"
+                      >
+                        <el-icon :size="50"><i class="fa-solid fa-upload"></i></el-icon>
+                        <p>{{ t('clickOrDropVrma') }}</p>
+                      </div>
+                      
+                      <!-- 文件列表 -->
+                      <div class="compact-file-list" v-if="newVrmaMotion.name">
+                        <div class="compact-file-item">
+                          <span class="file-name">{{ newVrmaMotion.name }}</span>
+                          <el-button
+                            @click.stop="removeNewVrmaMotion"
+                            class="delete-icon"
+                            circle
+                          >
+                            <i class="fa-solid fa-trash"></i>
+                          </el-button>
+                        </div>
+                      </div>
+
+                      <el-input
+                        v-model="newVrmaMotion.displayName"
+                        :label="t('motionDisplayName')"
+                        :placeholder="t('motionDisplayNamePlaceholder')"
+                        required
+                      />
+                    </div>
+                    <template #footer>
+                      <el-button @click="cancelVrmaMotionUpload">{{ t('cancel') }}</el-button>
+                      <el-button type="primary" @click="uploadVrmaMotion" :disabled="!newVrmaMotion.name">
+                        {{ t('createImmediately') }}
+                      </el-button>
+                    </template>
+                  </el-dialog>
+
+                  <!-- 高斯场景上传对话框  GAUSS -->
+                  <el-dialog
+                    v-model="showGaussSceneDialog"
+                    :title="t('uploadGaussScene')"
+                    width="600px"
+                  >
+                    <div class="upload-container">
+                      <div
+                        class="drop-zone"
+                        @dragover.prevent
+                        @drop.prevent="handleGaussSceneDrop"
+                        @click="browseGaussSceneFile"
+                      >
+                        <el-icon :size="50"><i class="fa-solid fa-upload"></i></el-icon>
+                        <p>{{ t('clickOrDropGaussScene') }}</p>
+                      </div>
+                      
+                      <!-- 文件列表 -->
+                      <div class="compact-file-list" v-if="newGaussScene.name">
+                        <div class="compact-file-item">
+                          <span class="file-name">{{ newGaussScene.name }}</span>
+                          <el-button
+                            @click.stop="removeNewGaussScene"
+                            class="delete-icon"
+                            circle
+                          >
+                            <i class="fa-solid fa-trash"></i>
+                          </el-button>
+                        </div>
+                      </div>
+
+                      <el-input
+                        v-model="newGaussScene.displayName"
+                        :label="t('GaussSceneDisplayName')"
+                        :placeholder="t('GaussSceneDisplayNamePlaceholder')"
+                        required
+                      />
+                    </div>
+                    <template #footer>
+                      <el-button @click="cancelGaussSceneUpload">{{ t('cancel') }}</el-button>
+                      <el-button type="primary" @click="uploadGaussScene" :disabled="!newGaussScene.name">
+                        {{ t('createImmediately') }}
+                      </el-button>
+                    </template>
+                  </el-dialog>
 
                   <!-- 朗读页面 -->
                   <div v-show="subMenu === 'read_bot'">
@@ -9701,106 +9660,104 @@ if ('serviceWorker' in navigator) {
                                 </el-tooltip>
                               </div>
                             </div>
-                            <div class="tool-item">
-                              <div class="tool-content">
-                                <!-- 新增：进度条区域 -->
-                                <div class="progress-container" style="margin-top: 15px;">
-                                  <div class="progress-info" style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                                    <span>{{ t('processingProgress') }}</span>
-                                    <span>{{ processingProgressText }}</span>
-                                  </div>
-                                  <el-progress 
-                                    :percentage="processingPercentage" 
-                                    :status="progressStatus"
-                                    :stroke-width="20"
-                                    :text-inside="true"
-                                  ></el-progress>
+                            <div class="tool-content">
+                              <!-- 新增：进度条区域 -->
+                              <div class="progress-container" style="margin-top: 15px;">
+                                <div class="progress-info" style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                  <span>{{ t('processingProgress') }}</span>
+                                  <span>{{ processingProgressText }}</span>
                                 </div>
-                                <!-- 文件选择区域 -->
-                                <el-form-item>
-                                  <!-- 选择textFiles中的文件 -->
-                                  <el-select class="full-width-input" v-model="selectedFile" @change="parseSelectedFile" :placeholder="t('selectFile')">
-                                    <el-option
-                                      v-for="file in textFiles"
-                                      :key="file.unique_filename"
-                                      :label="file.original_filename"
-                                      :value="file.unique_filename"
-                                    ></el-option>
-                                  </el-select>
-                                </el-form-item>
-                                <el-alert
-                                  type="info"
-                                  :closable="false"
-                                  class="mb-2"
-                                >
-                                  <template #default>
-                                    <div class="alert-content">
-                                      {{ t('SeparatorNotice') }}<br>
-                                      {{ t('SeparatorNotice1') }}
-                                      <el-link
-                                        type="primary"
-                                        :underline="false"
-                                        class="font-medium"
-                                        @click="switchToTTS"
-                                      >
-                                        <el-icon class="mr-1">
-                                          <i class="fa-solid fa-key"></i>
-                                        </el-icon>{{ t('TTSInterface') }}
-                                      </el-link>
-                                    </div>
-                                  </template>
-                                </el-alert>
-                                <div style="display: flex; justify-content: flex-end;margin-bottom: 16px;">
-                                  <el-tooltip :content="t('prevChapter')" placement="top">
-                                    <el-button 
-                                      v-show="this.readConfig.longTextList?.length > 0"
-                                      type="default" 
-                                      @click="PrevPage" 
-                                      circle
-                                    >
-                                      <i class="fa-solid fa-arrow-left"></i>
-                                    </el-button>
-                                  </el-tooltip>
-                                  <el-tooltip :content="t('nextChapter')" placement="top">
-                                    <el-button 
-                                      v-show="this.readConfig.longTextList?.length > 0"
-                                      type="default" 
-                                      @click="NextPage" 
-                                      circle
-                                    >
-                                      <i class="fa-solid fa-arrow-right"></i>
-                                    </el-button>
-                                  </el-tooltip>
-                                  <!-- 新增上传文件按钮 -->
-                                  <el-tooltip :content="t('uploadFile')" placement="top">
-                                    <el-button 
-                                      type="success" 
-                                      @click="showFileDialog = true" 
-                                      circle
-                                    >
-                                      <i class="fa-solid fa-file-arrow-up"></i>
-                                    </el-button>
-                                  </el-tooltip>
-                                  <el-tooltip :content="t('clearText')" placement="top">
-                                    <el-button 
-                                      type="danger" 
-                                      @click="clearLongText" 
-                                      circle
-                                    >
-                                      <i class="fa-solid fa-broom"></i>
-                                    </el-button>
-                                  </el-tooltip>
-                                </div>
-                                <el-form-item>
-                                  <el-input
-                                      v-model="readConfig.longText"
-                                      type="textarea"
-                                      :rows=32
-                                      :placeholder="t('longTextPlaceholder')"
-                                      class="input-box">
-                                  </el-input>
-                                </el-form-item>
+                                <el-progress 
+                                  :percentage="processingPercentage" 
+                                  :status="progressStatus"
+                                  :stroke-width="20"
+                                  :text-inside="true"
+                                ></el-progress>
                               </div>
+                              <!-- 文件选择区域 -->
+                              <el-form-item>
+                                <!-- 选择textFiles中的文件 -->
+                                <el-select class="full-width-input" v-model="selectedFile" @change="parseSelectedFile" :placeholder="t('selectFile')">
+                                  <el-option
+                                    v-for="file in textFiles"
+                                    :key="file.unique_filename"
+                                    :label="file.original_filename"
+                                    :value="file.unique_filename"
+                                  ></el-option>
+                                </el-select>
+                              </el-form-item>
+                              <el-alert
+                                type="info"
+                                :closable="false"
+                                class="mb-2"
+                              >
+                                <template #default>
+                                  <div class="alert-content">
+                                    {{ t('SeparatorNotice') }}<br>
+                                    {{ t('SeparatorNotice1') }}
+                                    <el-link
+                                      type="primary"
+                                      :underline="false"
+                                      class="font-medium"
+                                      @click="switchToTTS"
+                                    >
+                                      <el-icon class="mr-1">
+                                        <i class="fa-solid fa-key"></i>
+                                      </el-icon>{{ t('TTSInterface') }}
+                                    </el-link>
+                                  </div>
+                                </template>
+                              </el-alert>
+                              <div style="display: flex; justify-content: flex-end;margin-bottom: 16px;">
+                                <el-tooltip :content="t('prevChapter')" placement="top">
+                                  <el-button 
+                                    v-show="this.readConfig.longTextList?.length > 0"
+                                    type="default" 
+                                    @click="PrevPage" 
+                                    circle
+                                  >
+                                    <i class="fa-solid fa-arrow-left"></i>
+                                  </el-button>
+                                </el-tooltip>
+                                <el-tooltip :content="t('nextChapter')" placement="top">
+                                  <el-button 
+                                    v-show="this.readConfig.longTextList?.length > 0"
+                                    type="default" 
+                                    @click="NextPage" 
+                                    circle
+                                  >
+                                    <i class="fa-solid fa-arrow-right"></i>
+                                  </el-button>
+                                </el-tooltip>
+                                <!-- 新增上传文件按钮 -->
+                                <el-tooltip :content="t('uploadFile')" placement="top">
+                                  <el-button 
+                                    type="success" 
+                                    @click="showFileDialog = true" 
+                                    circle
+                                  >
+                                    <i class="fa-solid fa-file-arrow-up"></i>
+                                  </el-button>
+                                </el-tooltip>
+                                <el-tooltip :content="t('clearText')" placement="top">
+                                  <el-button 
+                                    type="danger" 
+                                    @click="clearLongText" 
+                                    circle
+                                  >
+                                    <i class="fa-solid fa-broom"></i>
+                                  </el-button>
+                                </el-tooltip>
+                              </div>
+                              <el-form-item>
+                                <el-input
+                                    v-model="readConfig.longText"
+                                    type="textarea"
+                                    :rows=32
+                                    :placeholder="t('longTextPlaceholder')"
+                                    class="input-box">
+                                </el-input>
+                              </el-form-item>
                             </div>
                           </div>
                         </el-form>
@@ -10000,40 +9957,37 @@ if ('serviceWorker' in navigator) {
                                 </el-tooltip>
                               </div>
                             </div>
-
-                            <div class="tool-item">
-                              <div class="tool-header">
-                                <div class="header-left">
-                                  <span>
-                                    {{t('liveSetting')}}
-                                  </span>
-                                </div>
+                            <div class="tool-header">
+                              <div class="header-left">
+                                <span>
+                                  {{t('liveSetting')}}
+                                </span>
                               </div>
-                              <div class="tool-content">
-                                <el-form-item :label="t('onlyDanmaku')" class="form-item-align" label-position="left">
-                                  <el-switch 
-                                    v-model="liveConfig.onlyDanmaku" 
-                                    @change="autoSaveSettings"
-                                  ></el-switch>
-                                </el-form-item>   
-                                <el-form-item :label="t('danmakuQueueLimit')" class="form-item-align" label-position="left">
-                                  <el-slider
-                                    v-model="liveConfig.danmakuQueueLimit"
-                                    :min="1"
-                                    :max="30"
-                                    :step="1"
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item> 
-                                <el-form-item :label="t('danmakuWakeWord')">
-                                  <el-input
-                                    v-model="liveConfig.wakeWord"
-                                    :placeholder="t('wakeWordPlaceholder')"
-                                    class="full-width-input"
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-                              </div>
+                            </div>
+                            <div class="tool-content">
+                              <el-form-item :label="t('onlyDanmaku')" class="form-item-align" label-position="left">
+                                <el-switch 
+                                  v-model="liveConfig.onlyDanmaku" 
+                                  @change="autoSaveSettings"
+                                ></el-switch>
+                              </el-form-item>   
+                              <el-form-item :label="t('danmakuQueueLimit')" class="form-item-align" label-position="left">
+                                <el-slider
+                                  v-model="liveConfig.danmakuQueueLimit"
+                                  :min="1"
+                                  :max="30"
+                                  :step="1"
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item> 
+                              <el-form-item :label="t('danmakuWakeWord')">
+                                <el-input
+                                  v-model="liveConfig.wakeWord"
+                                  :placeholder="t('wakeWordPlaceholder')"
+                                  class="full-width-input"
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
                             </div>
                           </div>
                         </el-form>
@@ -10100,102 +10054,100 @@ if ('serviceWorker' in navigator) {
                               </div>
                             </div>
 
-                            <div class="tool-item">
-                              <div class="tool-header">
-                                <div class="header-left">
-                                  <span>
-                                    {{t('bilibili')}}
-                                    <el-link
-                                      type="primary"
-                                      :underline="false"
-                                      href="https://open-live.bilibili.com/" 
-                                      target="_blank"
-                                    >
-                                      <el-icon class="mr-1">
-                                        <i class="fa-solid fa-key"></i>
-                                      </el-icon>{{ t('gotoBilibiliOpenLive') }}
-                                    </el-link>
-                                  </span>
-                                </div>
-                                <el-switch v-model="liveConfig.bilibili_enabled" @click.stop @change="autoSaveSettings"/>
-                              </div>
-                              <div class="tool-content">
-                                <el-form-item :label="t('liveType')">
-                                  <el-select
-                                    v-model="liveConfig.bilibili_type"
-                                    :placeholder="t('liveTypePlaceholder')"
-                                    class="full-width-input"
-                                    @change="autoSaveSettings"
+                            <div class="tool-header">
+                              <div class="header-left">
+                                <span>
+                                  {{t('bilibili')}}
+                                  <el-link
+                                    type="primary"
+                                    :underline="false"
+                                    href="https://open-live.bilibili.com/" 
+                                    target="_blank"
                                   >
-                                    <el-option :label="t('web')" value="web"></el-option>
-                                    <el-option :label="t('bilibili_open_live')" value="open_live"></el-option>
-                                  </el-select>
-                                </el-form-item>      
-                                <el-form-item :label="t('roomID')" v-if="liveConfig.bilibili_type === 'web'">
-                                  <el-input
-                                    v-model="liveConfig.bilibili_room_id"
-                                    :placeholder="t('roomIDPlaceholder')"
-                                    class="full-width-input"
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-                                <el-form-item :label="t('sessdata')" v-if="liveConfig.bilibili_type === 'web'">
-                                  <el-input
-                                    v-model="liveConfig.bilibili_sessdata"
-                                    :placeholder="t('sessdataPlaceholder')"
-                                    class="full-width-input"
-                                    show-password
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-                                <el-alert
-                                  type="info"
-                                  :closable="false"
-                                  class="mb-2"
-                                  v-if="liveConfig.bilibili_type === 'web'"
-                                >
-                                  <template #default>
-                                    <div class="alert-content">
-                                      {{ t('webBilibiliInfo') }}
-                                    </div>
-                                  </template>
-                                </el-alert>
-                                <el-form-item label="ACCESS KEY ID" v-if="liveConfig.bilibili_type === 'open_live'">
-                                  <el-input
-                                    v-model="liveConfig.bilibili_ACCESS_KEY_ID"
-                                    :placeholder="t('ACCESS_KEY_ID_Placeholder')"
-                                    class="full-width-input"
-                                    show-password
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-                                <el-form-item label="ACCESS KEY SECRET" v-if="liveConfig.bilibili_type === 'open_live'">
-                                  <el-input
-                                    v-model="liveConfig.bilibili_ACCESS_KEY_SECRET"
-                                    :placeholder="t('ACCESS_KEY_SECRET_Placeholder')"
-                                    class="full-width-input"
-                                    show-password
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-                                <el-form-item label="APP ID" v-if="liveConfig.bilibili_type === 'open_live'">
-                                  <el-input
-                                    v-model="liveConfig.bilibili_APP_ID"
-                                    :placeholder="t('APP_ID_Placeholder')"
-                                    class="full-width-input"
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-                                <el-form-item label="ROOM OWNER AUTH CODE" v-if="liveConfig.bilibili_type === 'open_live'">
-                                  <el-input
-                                    v-model="liveConfig.bilibili_ROOM_OWNER_AUTH_CODE"
-                                    :placeholder="t('ROOM_OWNER_AUTH_CODE_Placeholder')"
-                                    class="full-width-input"
-                                    show-password
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
+                                    <el-icon class="mr-1">
+                                      <i class="fa-solid fa-key"></i>
+                                    </el-icon>{{ t('gotoBilibiliOpenLive') }}
+                                  </el-link>
+                                </span>
                               </div>
+                              <el-switch v-model="liveConfig.bilibili_enabled" @click.stop @change="autoSaveSettings"/>
+                            </div>
+                            <div class="tool-content">
+                              <el-form-item :label="t('liveType')">
+                                <el-select
+                                  v-model="liveConfig.bilibili_type"
+                                  :placeholder="t('liveTypePlaceholder')"
+                                  class="full-width-input"
+                                  @change="autoSaveSettings"
+                                >
+                                  <el-option :label="t('web')" value="web"></el-option>
+                                  <el-option :label="t('bilibili_open_live')" value="open_live"></el-option>
+                                </el-select>
+                              </el-form-item>      
+                              <el-form-item :label="t('roomID')" v-if="liveConfig.bilibili_type === 'web'">
+                                <el-input
+                                  v-model="liveConfig.bilibili_room_id"
+                                  :placeholder="t('roomIDPlaceholder')"
+                                  class="full-width-input"
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
+                              <el-form-item :label="t('sessdata')" v-if="liveConfig.bilibili_type === 'web'">
+                                <el-input
+                                  v-model="liveConfig.bilibili_sessdata"
+                                  :placeholder="t('sessdataPlaceholder')"
+                                  class="full-width-input"
+                                  show-password
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
+                              <el-alert
+                                type="info"
+                                :closable="false"
+                                class="mb-2"
+                                v-if="liveConfig.bilibili_type === 'web'"
+                              >
+                                <template #default>
+                                  <div class="alert-content">
+                                    {{ t('webBilibiliInfo') }}
+                                  </div>
+                                </template>
+                              </el-alert>
+                              <el-form-item label="ACCESS KEY ID" v-if="liveConfig.bilibili_type === 'open_live'">
+                                <el-input
+                                  v-model="liveConfig.bilibili_ACCESS_KEY_ID"
+                                  :placeholder="t('ACCESS_KEY_ID_Placeholder')"
+                                  class="full-width-input"
+                                  show-password
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
+                              <el-form-item label="ACCESS KEY SECRET" v-if="liveConfig.bilibili_type === 'open_live'">
+                                <el-input
+                                  v-model="liveConfig.bilibili_ACCESS_KEY_SECRET"
+                                  :placeholder="t('ACCESS_KEY_SECRET_Placeholder')"
+                                  class="full-width-input"
+                                  show-password
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
+                              <el-form-item label="APP ID" v-if="liveConfig.bilibili_type === 'open_live'">
+                                <el-input
+                                  v-model="liveConfig.bilibili_APP_ID"
+                                  :placeholder="t('APP_ID_Placeholder')"
+                                  class="full-width-input"
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
+                              <el-form-item label="ROOM OWNER AUTH CODE" v-if="liveConfig.bilibili_type === 'open_live'">
+                                <el-input
+                                  v-model="liveConfig.bilibili_ROOM_OWNER_AUTH_CODE"
+                                  :placeholder="t('ROOM_OWNER_AUTH_CODE_Placeholder')"
+                                  class="full-width-input"
+                                  show-password
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
                             </div>
 
                           </div>
@@ -10264,56 +10216,54 @@ if ('serviceWorker' in navigator) {
                             </div>
 
                             <!-- YouTube 配置 -->
-                            <div class="tool-item">
-                              <div class="tool-header">
-                                <div class="header-left">
-                                  <span>
-                                    YouTube
-                                    <el-link
-                                      type="primary"
-                                      :underline="false"
-                                      href="https://console.cloud.google.com/apis/credentials"
-                                      target="_blank"
-                                    >
-                                      <el-icon class="mr-1"><i class="fa-solid fa-key"></i></el-icon>
-                                      {{ t('getYouTubeAPIKey') }}
-                                    </el-link>
-                                  </span>
-                                </div>
-                                <el-switch
-                                  v-model="liveConfig.youtube_enabled"
+                            <div class="tool-header">
+                              <div class="header-left">
+                                <span>
+                                  YouTube
+                                  <el-link
+                                    type="primary"
+                                    :underline="false"
+                                    href="https://console.cloud.google.com/apis/credentials"
+                                    target="_blank"
+                                  >
+                                    <el-icon class="mr-1"><i class="fa-solid fa-key"></i></el-icon>
+                                    {{ t('getYouTubeAPIKey') }}
+                                  </el-link>
+                                </span>
+                              </div>
+                              <el-switch
+                                v-model="liveConfig.youtube_enabled"
+                                @change="autoSaveSettings"
+                              />
+                            </div>
+
+                            <div class="tool-content">
+                              <el-form-item :label="t('youtubeVideoId')">
+                                <el-input
+                                  v-model="liveConfig.youtube_video_id"
+                                  :placeholder="t('youtubeVideoIdPlaceholder')"
+                                  class="full-width-input"
                                   @change="autoSaveSettings"
                                 />
-                              </div>
+                              </el-form-item>
 
-                              <div class="tool-content">
-                                <el-form-item :label="t('youtubeVideoId')">
-                                  <el-input
-                                    v-model="liveConfig.youtube_video_id"
-                                    :placeholder="t('youtubeVideoIdPlaceholder')"
-                                    class="full-width-input"
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
+                              <el-form-item :label="t('youtubeApiKey')">
+                                <el-input
+                                  v-model="liveConfig.youtube_api_key"
+                                  :placeholder="t('youtubeApiKeyPlaceholder')"
+                                  class="full-width-input"
+                                  show-password
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
 
-                                <el-form-item :label="t('youtubeApiKey')">
-                                  <el-input
-                                    v-model="liveConfig.youtube_api_key"
-                                    :placeholder="t('youtubeApiKeyPlaceholder')"
-                                    class="full-width-input"
-                                    show-password
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-
-                                <el-alert type="info" :closable="false" class="mb-2">
-                                  <template #default>
-                                    <div class="alert-content">
-                                      {{ t('youtubeHelp') }}
-                                    </div>
-                                  </template>
-                                </el-alert>
-                              </div>
+                              <el-alert type="info" :closable="false" class="mb-2">
+                                <template #default>
+                                  <div class="alert-content">
+                                    {{ t('youtubeHelp') }}
+                                  </div>
+                                </template>
+                              </el-alert>
                             </div>
                           </div>
                         </el-form>
@@ -10381,56 +10331,54 @@ if ('serviceWorker' in navigator) {
                             </div>
 
                             <!-- Twitch 配置 -->
-                            <div class="tool-item">
-                              <div class="tool-header">
-                                <div class="header-left">
-                                  <span>
-                                    Twitch
-                                    <el-link
-                                      type="primary"
-                                      :underline="false"
-                                      href="https://twitchtokengenerator.com"
-                                      target="_blank"
-                                    >
-                                      <el-icon class="mr-1"><i class="fa-solid fa-key"></i></el-icon>
-                                      {{ t('getTwitchAccessToken') }}
-                                    </el-link>
-                                  </span>
-                                </div>
-                                <el-switch
-                                  v-model="liveConfig.twitch_enabled"
+                            <div class="tool-header">
+                              <div class="header-left">
+                                <span>
+                                  Twitch
+                                  <el-link
+                                    type="primary"
+                                    :underline="false"
+                                    href="https://twitchtokengenerator.com"
+                                    target="_blank"
+                                  >
+                                    <el-icon class="mr-1"><i class="fa-solid fa-key"></i></el-icon>
+                                    {{ t('getTwitchAccessToken') }}
+                                  </el-link>
+                                </span>
+                              </div>
+                              <el-switch
+                                v-model="liveConfig.twitch_enabled"
+                                @change="autoSaveSettings"
+                              />
+                            </div>
+
+                            <div class="tool-content">
+                              <el-form-item :label="t('twitchChannel')">
+                                <el-input
+                                  v-model="liveConfig.twitch_channel"
+                                  :placeholder="t('twitchChannelPlaceholder')"
+                                  class="full-width-input"
                                   @change="autoSaveSettings"
                                 />
-                              </div>
+                              </el-form-item>
 
-                              <div class="tool-content">
-                                <el-form-item :label="t('twitchChannel')">
-                                  <el-input
-                                    v-model="liveConfig.twitch_channel"
-                                    :placeholder="t('twitchChannelPlaceholder')"
-                                    class="full-width-input"
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
+                              <el-form-item :label="t('twitchAccessToken')">
+                                <el-input
+                                  v-model="liveConfig.twitch_access_token"
+                                  :placeholder="t('twitchAccessTokenPlaceholder')"
+                                  class="full-width-input"
+                                  show-password
+                                  @change="autoSaveSettings"
+                                />
+                              </el-form-item>
 
-                                <el-form-item :label="t('twitchAccessToken')">
-                                  <el-input
-                                    v-model="liveConfig.twitch_access_token"
-                                    :placeholder="t('twitchAccessTokenPlaceholder')"
-                                    class="full-width-input"
-                                    show-password
-                                    @change="autoSaveSettings"
-                                  />
-                                </el-form-item>
-
-                                <el-alert type="info" :closable="false" class="mb-2">
-                                  <template #default>
-                                    <div class="alert-content">
-                                      {{ t('twitchHelp') }}
-                                    </div>
-                                  </template>
-                                </el-alert>
-                              </div>
+                              <el-alert type="info" :closable="false" class="mb-2">
+                                <template #default>
+                                  <div class="alert-content">
+                                    {{ t('twitchHelp') }}
+                                  </div>
+                                </template>
+                              </el-alert>
                             </div>
                           </div>
                         </el-form>
@@ -10775,7 +10723,6 @@ if ('serviceWorker' in navigator) {
                       @click="selectLocalZip" 
                       :loading="installLoading"  
                       type="primary" 
-                      plain 
                       class="add-server-btn">
                       {{t('localZipInstallation')}}
                     </el-button>
