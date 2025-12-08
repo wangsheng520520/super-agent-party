@@ -4625,3 +4625,79 @@ body {
   border-color: var(--el-color-primary);
   background-color: var(--el-color-primary-light-9);
 }
+
+/* =========================================
+   3. Markdown 链接美化：高级灰色胶囊按钮
+   ========================================= */
+
+/* 1. 基础样式：重置默认的蓝色链接，改为灰色胶囊 */
+.markdown-body a {
+  display: inline-flex;          /* 让链接像个小盒子，支持 padding */
+  align-items: center;           /* 内容垂直居中 */
+  vertical-align: middle;        /* 与周围文字对齐 */
+  
+  /* 尺寸与间距 */
+  padding: 2px 10px 2px 8px;     /* 上下紧凑，左右宽敞 */
+  margin: 0 4px;                 /* 链接之间留点空隙 */
+  border-radius: 14px;           /* 完整的圆角 (胶囊形) */
+  
+  /* 字体设置 */
+  font-size: 0.9em;              /* 比正文稍小，更精致 */
+  line-height: 1.5;
+  text-decoration: none !important; /* 去掉下划线 */
+  
+  /* --- 颜色系统 (高级灰) --- */
+  /* 背景：使用极浅的填充色 */
+  background-color: var(--el-fill-color, #f0f2f5);
+  /* 边框：浅灰色描边 */
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  /* 文字：次级文字颜色 (深灰) */
+  color: var(--el-text-color-regular, #606266) !important;
+  
+  /* 动画 */
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* 强制不换行 (可选，防止长链接标题被打断，如果标题很长建议去掉这行) */
+  /* white-space: nowrap; */
+  /* max-width: 100%; */
+}
+
+/* 2. 添加链接图标前缀 (增加识别度) */
+.markdown-body a::before {
+  /* 使用 FontAwesome 的链接图标 */
+  content: "\f0c1"; 
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  
+  margin-right: 6px;             /* 图标和文字的间距 */
+  font-size: 0.85em;             /* 图标稍小 */
+  opacity: 0.6;                  /* 图标半透明，不要太抢眼 */
+  transition: transform 0.2s;
+}
+
+/* 3. 悬停状态 (Hover)：变色、上浮、投影 */
+.markdown-body a:hover {
+  /* 背景：变成极浅的主色调 */
+  background-color: var(--el-color-primary-light-9) !important;
+  /* 边框：变成主色调 */
+  border-color: var(--el-color-primary) !important;
+  /* 文字：变成主色调 */
+  color: var(--el-color-primary) !important;
+  
+  /* 交互反馈 */
+  transform: translateY(-1px);   /* 微微上浮 */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08); /* 增加投影 */
+}
+
+/* 悬停时图标的小动画 */
+.markdown-body a:hover::before {
+  opacity: 1;
+  transform: rotate(-45deg); /* 图标旋转一下，增加灵动感 */
+}
+
+/* 4. 点击状态 (Active) */
+.markdown-body a:active {
+  transform: translateY(0);
+  box-shadow: none;
+  background-color: var(--el-color-primary-light-8) !important;
+}
