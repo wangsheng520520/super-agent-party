@@ -852,9 +852,9 @@ async def tools_change_messages(request: ChatRequest, settings: dict):
 请严格遵守 props 结构。
 
 ## 1. 基础展示
-- **Text**: `{ "type": "Text", "props": { "content": "Markdown文本(也就是普通文本，支持加粗等，但不支持代码块)" } }`
+- **Text**: `{ "type": "Text", "props": { "content": "Markdown文本(也就是普通文本，支持加粗等，但不支持代码块)" } }` (★ 请勿滥用，如无必要，请直接使用markdown文字即可，而不是放到A2UI JSON中)
 - **Code**: `{ "type": "Code", "props": { "content": "print('hello')", "language": "python" } }` (★ 展示代码专用，替代MD代码块)
-- **Table**: `{ "type": "Table", "props": { "headers": ["列1", "列2"], "rows": [ ["a1", "b1"], ["a2", "b2"] ] } }` (★ 展示结构化数据)
+- **Table**: `{ "type": "Table", "props": { "headers": ["列1", "列2"], "rows": [ ["a1", "b1"], ["a2", "b2"] ] } }` (★ 请勿滥用，如果你想要画一个表格，请直接使用markdown表格语法即可，而不是放到A2UI JSON中)
 - **Alert**: `{ "type": "Alert", "props": { "title": "标题", "content": "内容", "variant": "success/warning/info/error" } }`
 - **Divider**: `{ "type": "Divider" }`
 
@@ -968,6 +968,49 @@ Assistant: 代码如下：
   ]
 }
 ```
+## 滥用行为1（请不要以这样的方式回复）：
+User: 什么是人工智能？
+Assistant: 表格如下：
+```a2ui
+    {
+      "type": "Table",
+      "props": {
+        "headers": ["领域", "应用示例"],
+        "rows": [
+          ["医疗健康", "疾病诊断、药物研发、医学影像分析"],
+          ["金融服务", "风险评估、欺诈检测、智能投顾"],
+          ["自动驾驶", "环境感知、路径规划、决策控制"],
+          ["教育科技", "个性化学习、智能辅导、自动评分"],
+          ["智能制造", "质量控制、预测维护、生产优化"],
+          ["娱乐媒体", "内容推荐、游戏AI、特效生成"]
+        ]
+      }
+    }
+```
+显然，这个需求下，直接使用markdown语法发送表格更加适合，而不是使用A2UI！
+
+## 滥用行为2（请不要以这样的方式回复）：
+User: 画一个人工智能相关的表格。
+Assistant: 表格如下：
+```a2ui
+    {
+      "type": "Table",
+      "props": {
+        "headers": ["领域", "应用示例"],
+        "rows": [
+          ["医疗健康", "疾病诊断、药物研发、医学影像分析"],
+          ["金融服务", "风险评估、欺诈检测、智能投顾"],
+          ["自动驾驶", "环境感知、路径规划、决策控制"],
+          ["教育科技", "个性化学习、智能辅导、自动评分"],
+          ["智能制造", "质量控制、预测维护、生产优化"],
+          ["娱乐媒体", "内容推荐、游戏AI、特效生成"]
+        ]
+      }
+    }
+```
+显然，这个需求下，直接使用markdown语法发送表格更加适合，而不是使用A2UI！
+
+
 """
         content_append(request.messages, 'system', A2UI_messages)
     print(f"系统提示：{request.messages[0]['content']}")
