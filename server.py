@@ -2840,7 +2840,7 @@ async def generate_stream_response(client,reasoner_client, request: ChatRequest,
                         metadata = {
                             "timetamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         }
-                        func = partial(m0.add, user_id=memoryId,metadata=metadata)
+                        func = partial(m0.add, user_id=memoryId,metadata=metadata,infer=False)
                         # 传递 messages 作为位置参数
                         await loop.run_in_executor(executor, func, messages)
                         print("知识库更新完成")
@@ -3122,9 +3122,9 @@ async def generate_complete_response(client,reasoner_client, request: ChatReques
         kb_list = []
         user_prompt = request.messages[-1]['content']
         if settings["memorySettings"]["is_memory"] and settings["memorySettings"]["selectedMemory"] and settings["memorySettings"]["selectedMemory"] != "":
-            if settings["memorySettings"]["userName"]:
+            if settings["memorySettings"]["userName"] and settings["memorySettings"]["userName"] != "user":
                 print("添加用户名：\n\n" + settings["memorySettings"]["userName"] + "\n\n用户名结束\n\n")
-                content_append(request.messages, 'system', "与你交流的用户名为：\n\n" + settings["memorySettings"]["userName"] + "\n\n")
+                content_append(request.messages, 'system', "当前与你交流的人的名字为：\n\n" + settings["memorySettings"]["userName"] + "\n\n")
             lore_content = ""
             assistant_reply = ""
             # 找出request.messages中上次的assistant回复
