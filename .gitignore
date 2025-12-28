@@ -8,13 +8,10 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -177,7 +174,6 @@ config/settings.json
 test/
 uploaded_files/
 kb/
-dist/
 release/
 server.build/
 server.dist/
