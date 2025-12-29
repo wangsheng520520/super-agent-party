@@ -147,6 +147,13 @@
 
 - API key管理： 访问http://localhost:3456/token.html
 
+### 与docker版本配套的轻量版客户端，将你的docker版本变成桌面端
+
+👉 [Windows-exe](https://github.com/heshengtao/desktop-for-sap/releases/download/v0.1.0/super-agent-party-lite-Setup-0.1.0.exe)
+
+👉 [MacOS-dmg](https://github.com/heshengtao/desktop-for-sap/releases/download/v0.1.0/super-agent-party-lite-0.1.0-Mac.dmg)
+
+
 ### 源码部署
 
   ```shell
