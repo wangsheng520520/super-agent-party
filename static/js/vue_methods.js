@@ -379,7 +379,7 @@ let vue_methods = {
     },
     async confirmDeleteConversation(convId) {
       if (convId === this.conversationId) {
-        this.messages = [{ role: 'system', content: this.system_prompt }];
+        this.messages = [{ id: Date.now() + Math.random(), role: 'system', content: this.system_prompt }];
       }
       
       this.conversations = this.conversations.filter(c => c.id !== convId);
@@ -397,7 +397,7 @@ let vue_methods = {
       }
       else {
         this.system_prompt = " ";
-        this.messages = [{ role: 'system', content: this.system_prompt }];
+        this.messages = [{ id: Date.now() + Math.random(), role: 'system', content: this.system_prompt }];
       }
       if(this.allBriefly){
         this.messages.forEach((m) => {
@@ -1348,6 +1348,7 @@ let vue_methods = {
   
       // 情况 3: 没有系统消息
       this.messages.unshift({
+        id: Date.now() + Math.random(), // 添加唯一ID
         role: 'system',
         content: newPrompt
       });
@@ -1500,6 +1501,7 @@ let vue_methods = {
       // const escapedContent = this.escapeHtml(userInput.trim());
       // 添加用户消息
       this.messages.push({
+        id: Date.now() + Math.random(), // 添加唯一ID
         role: role,
         content: userInput.trim(),
         fileLinks: fileLinks,
@@ -1639,6 +1641,7 @@ let vue_methods = {
         }
 
         this.messages.push({
+          id: Date.now() + Math.random(), // 添加唯一ID
           role: 'assistant',
           content: '',
           pure_content: '',
@@ -6334,31 +6337,115 @@ handleCreateDiscordSeparator(val) {
         message.isPlaying = false;
         if (this.currentAudio) {
           this.currentAudio.pause();
+          this.currentAudio = null;
         }
+        // 发送停止说话信号到VRM
+        this.sendTTSStatusToVRM('stopSpeaking', {});
       } else {
-        // 如果没有播放，则开始播放
+        // 如果没有播放，则开始播放，先停止其他播放
+        this.stopAllAudioPlayback();
         message.isPlaying = true;
         this.playAudioChunk(message);
       }
     },
+    // 停止所有正在播放的音频
+    stopAllAudioPlayback() {
+      // 停止当前正在播放的音频
+      if (this.currentAudio) {
+        this.currentAudio.pause();
+        this.currentAudio = null;
+      }
+
+      // 停止阅读音频
+      if (this.currentReadAudio) {
+        this.currentReadAudio.pause();
+        this.currentReadAudio = null;
+      }
+
+      // 停止所有消息的播放状态
+      this.messages.forEach(message => {
+        message.isPlaying = false;
+      });
+
+      // 发送停止信号到VRM
+      this.sendTTSStatusToVRM('stopSpeaking', {});
+    },
+
     async playAudioChunk(message) {
       if (!this.ttsSettings.enabled){
         message.isPlaying = false; // 如果没有音频块，停止播放
         message.currentChunk = 0; // 重置索引
-        if (this.currentAudio) {
-          this.currentAudio.pause();
-          this.currentAudio= null;
-        }
         return;
       }
+
+      // 初始化 cur_audioDatas 对象（如果不存在）
+      if (!this.cur_audioDatas) {
+        this.cur_audioDatas = {};
+      }
+
+      // 为每个消息创建唯一的键，使用消息ID
+      const base64Key = `msg_${message.id}_chunk_${message.currentChunk}`;
+
       const audioChunk = message.audioChunks[message.currentChunk];
       if (audioChunk) {
+        // 检查是否有音频URL可以播放
+        if (!audioChunk.url) {
+          console.log(`Audio chunk ${message.currentChunk} has no URL, skipping`);
+          message.currentChunk++;
+          this.playAudioChunk(message);
+          return;
+        }
+
         const audio = new Audio(audioChunk.url);
         this.currentAudio = audio; // 保存当前音频对象
-        
+
+        // 设置音量：VRM在线时静音，让VRM播放；不在线时正常播放
+        audio.volume = this.vrmOnline ? 0.0000001 : 1;
+
+        // 如果没有base64数据，尝试从blob URL生成
+        if (!this.cur_audioDatas[base64Key] && audioChunk.url) {
+          try {
+            const response = await fetch(audioChunk.url);
+            const blob = await response.blob();
+            const base64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result.split(',')[1]);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            this.cur_audioDatas[base64Key] = `data:${blob.type};base64,${base64}`;
+            console.log(`Generated base64 for ${base64Key}, length: ${this.cur_audioDatas[base64Key].length}`);
+          } catch (error) {
+            console.warn(`Failed to generate base64 for ${base64Key}:`, error);
+            this.cur_audioDatas[base64Key] = '';
+          }
+        }
+
+        // 发送 startSpeaking 状态到 VRM（每个块都需要发送）
+        // 确保有base64数据才发送startSpeaking
+        const audioDataUrl = this.cur_audioDatas[base64Key];
+        if (audioDataUrl && audioDataUrl.length > 0) {
+          console.log(`Sending startSpeaking with base64 data for ${base64Key}`);
+          this.sendTTSStatusToVRM('startSpeaking', {
+            audioDataUrl: audioDataUrl,
+            chunkIndex: message.currentChunk,
+            totalChunks: message.audioChunks.length,
+            text: audioChunk.text || '',
+            expressions: audioChunk.expressions || [],
+            voice: message.chunks_voice ? message.chunks_voice[message.currentChunk] || 'default' : 'default',
+          });
+        } else {
+          console.warn(`No base64 data available for ${base64Key}, skipping startSpeaking`);
+        }
+
         try {
           await audio.play();
           audio.onended = () => {
+            // 发送 chunkEnded 状态到 VRM
+            this.sendTTSStatusToVRM('chunkEnded', {
+              chunkIndex: message.currentChunk
+            });
+
             message.currentChunk++; // 播放结束后，索引加一
             this.playAudioChunk(message); // 递归调用播放下一个音频块
           };
@@ -6374,6 +6461,8 @@ handleCreateDiscordSeparator(val) {
       } else {
         message.isPlaying = false; // 如果没有音频块，停止播放
         message.currentChunk = 0; // 重置索引
+        // 发送所有块播放完成状态到 VRM
+        this.sendTTSStatusToVRM('allChunksCompleted', {});
       }
     },
     backwardTTS(message) {

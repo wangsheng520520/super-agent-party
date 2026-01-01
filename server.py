@@ -5503,61 +5503,90 @@ async def text_to_speech(request: Request):
 async def get_system_voices():
     """
     获取系统可用的 pyttsx3 音色列表。
-    返回格式适配前端下拉框组件。
+    已针对 macOS 进行特殊过滤，去除特效音和不可用音色。
     """
     import pyttsx3
-    # 定义同步函数，用于提取音色信息
+
     def fetch_voices_sync():
         try:
-            # 初始化引擎
-            # 注意：在某些服务器环境(无音频设备)下初始化可能会失败，需要捕获异常
+            # 1. 定义 macOS 特有的怪诞音色黑名单 (Novelty Voices)
+            # 这些音色通常是用来唱哥、发怪声的，不适合阅读文本
+            mac_novelty_voices = {
+                'Albert', 'Bad News', 'Bahh', 'Bells', 'Boing', 'Bubbles', 'Cellos',
+                'Deranged', 'Good News', 'Hysterical', 'Pipe Organ', 'Trinoids', 
+                'Whisper', 'Zarvox', 'Organ'
+            }
+
             engine = pyttsx3.init()
             voices = engine.getProperty('voices')
             
             voice_list = []
             for v in voices:
-                # 尝试获取语言信息，有些引擎返回的是列表，有些是字节
+                voice_name = v.name
+                voice_id = v.id
+
+                # -----------------------------
+                # macOS 专属过滤逻辑
+                # -----------------------------
+                if sys.platform == 'darwin':
+                    # 过滤策略 A: 排除黑名单中的特效音
+                    if voice_name in mac_novelty_voices:
+                        continue
+                    
+                    # 过滤策略 B: 排除 ID 中包含 'siri' 的音色
+                    # 原因：pyttsx3 基于旧版 NSSpeechSynthesizer，通常无法驱动 Siri 在线/神经音色，
+                    # 强行调用会导致静音或报错。建议只保留本地离线音色。
+                    if 'siri' in voice_id.lower():
+                        continue
+                        
+                    # 过滤策略 C (可选): 某些无效音色可能没有语言属性
+                    if not v.languages:
+                        continue
+
+                # -----------------------------
+                # 通用：修复语言解析 (重点修复 Mac 返回 bytes 的问题)
+                # -----------------------------
                 lang = "Unknown"
                 if hasattr(v, 'languages') and v.languages:
-                    # 处理不同平台返回的语言格式差异
-                    if isinstance(v.languages, list) and len(v.languages) > 0:
-                        lang = str(v.languages[0])
+                    raw_lang = v.languages[0] if isinstance(v.languages, list) else v.languages
+                    
+                    # 处理 Mac 上可能返回 bytes 的情况 (如 b'\x05en_US')
+                    if isinstance(raw_lang, bytes):
+                        try:
+                            # 尝试解码，通常是 utf-8 或 mac-roman，这里简单处理转字符串
+                            lang = raw_lang.decode('utf-8', errors='ignore')
+                            # 移除可能存在的控制字符
+                            lang = ''.join([c for c in lang if c.isprintable()])
+                        except:
+                            lang = str(raw_lang)
                     else:
-                        lang = str(v.languages)
+                        lang = str(raw_lang)
 
                 voice_list.append({
-                    "id": v.id,          # 传递给后端 TTS 接口的 value
-                    "name": v.name,      # 前端显示的 label
-                    "lang": lang,        # 辅助信息：语言
-                    "gender": getattr(v, 'gender', 'Unknown') # 辅助信息：性别（如果可用）
+                    "id": voice_id,
+                    "name": voice_name,
+                    "lang": lang,
+                    "gender": getattr(v, 'gender', 'Unknown')
                 })
+            
             return voice_list
             
         except ImportError:
-            print("错误: 未找到 pyttsx3 驱动 (如 espeak, nsss, sapi5)")
-            return []
-        except RuntimeError as e:
-            print(f"pyttsx3 初始化失败: {str(e)}")
+            print("错误: 未找到 pyttsx3 驱动")
             return []
         except Exception as e:
-            print(f"获取系统音色未知错误: {str(e)}")
+            print(f"获取系统音色错误: {str(e)}")
             return []
 
     try:
-        # 在线程池中运行，避免阻塞主进程
         available_voices = await asyncio.to_thread(fetch_voices_sync)
-        
         return {
             "count": len(available_voices),
             "voices": available_voices
         }
     except Exception as e:
-        return JSONResponse(
-            status_code=500, 
-            content={"error": f"无法获取音色列表: {str(e)}"}
-        )
-
-
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
 async def convert_to_opus_simple(audio_data):
     """使用pydub将音频转换为opus格式（适合飞书）"""
     from pydub import AudioSegment
