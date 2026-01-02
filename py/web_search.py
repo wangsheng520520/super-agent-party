@@ -7,6 +7,7 @@ from langchain_community.tools import DuckDuckGoSearchResults
 import requests
 from tavily import TavilyClient
 from py.get_setting import load_settings
+from py.load_files import check_robots_txt
 
 async def DDGsearch_async(query):
     settings = await load_settings()
@@ -460,11 +461,13 @@ async def jina_crawler_async(original_url):
             return f"获取{original_url}网页信息失败，错误信息：{str(e)}"
 
     try:
+        if not await check_robots_txt(original_url):
+            raise PermissionError(f"合规拒绝: 目标网站禁止爬虫抓取")
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, sync_crawler)
     except Exception as e:
         print(f"Async execution error: {e}")
-        return ""
+        return str(e)
 
 jina_crawler_tool = {
     "type": "function",
@@ -525,11 +528,13 @@ async def Crawl4Ai_search_async(original_url):
             return f"获取{original_url}网页信息失败，错误信息：{str(e)}"
 
     try:
+        if not await check_robots_txt(original_url):
+            raise PermissionError(f"合规拒绝: 目标网站禁止爬虫抓取")
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, sync_search)
     except Exception as e:
         print(f"Async execution error: {e}")
-        return ""
+        return str(e)
 
 Crawl4Ai_tool = {
     "type": "function",
