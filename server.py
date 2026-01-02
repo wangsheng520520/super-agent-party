@@ -14,8 +14,12 @@ import socket
 import sys
 import tempfile
 import httpx
+import socket
+import ipaddress
+from urllib.parse import urlparse, urlunparse, urljoin
+from urllib.robotparser import RobotFileParser
 import websockets
-from py.load_files import get_file_content
+from py.load_files import get_file_content, sanitize_url
 def fix_macos_environment():
     """
     专门修复 macOS 下找不到 node (nvm) 和 uv (python framework) 的问题
@@ -2917,7 +2921,6 @@ async def generate_stream_response(client,reasoner_client, request: ChatRequest,
                 return
             except Exception as e:
                 logger.error(f"Error occurred: {e}")
-                import traceback
                 traceback.print_exc()
                 # 捕获异常并返回错误信息
                 error_chunk = {
@@ -4144,45 +4147,139 @@ async def simple_chat_endpoint(request: ChatRequest):
         headers={"Cache-Control": "no-cache"}
     )
 
-@app.get("/rss_proxy")
-async def rss_proxy_endpoint(url: str):
-    """
-    后端代理接口：带详细的代理调试日志
-    """
-    # 1. 打印当前的代理环境变量，确认是否生效
-    http_proxy = os.environ.get("http_proxy")
-    https_proxy = os.environ.get("https_proxy")
-    print(f"--- [RSS Proxy Debug] ---")
-    print(f"Target URL: {url}")
-    print(f"Env http_proxy: {http_proxy}")
-    print(f"Env https_proxy: {https_proxy}")
+# 建议 UA 包含项目地址
+USER_AGENT = "Mozilla/5.0 (compatible; OpenSourceProxyBot/1.0)"
+ROBOTS_CACHE = {}
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+def is_private_ip(hostname):
+    """检测是否为私有/内网IP，放行代理软件的 Fake-IP (198.18.0.0/15)"""
+    if not hostname: return False
+    try:
+        addr_info = socket.getaddrinfo(hostname, None, proto=socket.IPPROTO_TCP)
+        fake_ip_net = ipaddress.ip_network('198.18.0.0/15')
+        for item in addr_info:
+            ip_str = item[4][0]
+            ip_obj = ipaddress.ip_address(ip_str)
+            if ip_obj in fake_ip_net: return False 
+            if ip_obj.is_private or ip_obj.is_loopback: return True
+    except:
+        return False
+    return False
+
+async def check_robots_txt(url):
+    """异步检查代理请求是否符合 robots.txt"""
+    parsed = urlparse(url)
+    # 内部地址跳过 robots.txt 检查
+    if parsed.hostname in ['127.0.0.1', 'localhost']: return True
+    
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    if base_url in ROBOTS_CACHE:
+        return ROBOTS_CACHE[base_url].can_fetch(USER_AGENT, url)
+    
+    robots_url = urljoin(base_url, "/robots.txt")
+    rp = RobotFileParser()
+    try:
+        # 使用 httpx 获取 robots.txt
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(robots_url)
+            if resp.status_code == 200:
+                rp.parse(resp.text.splitlines())
+            else:
+                rp.allow_all = True
+    except:
+        rp.allow_all = True
+    ROBOTS_CACHE[base_url] = rp
+    return rp.can_fetch(USER_AGENT, url)
+
+# ================= 2. 修改后的代理路由 =================
+
+@app.api_route("/extension_proxy", methods=["GET", "POST"])
+async def extension_proxy_endpoint(request: Request):
+    """
+    合规且安全的通用代理接口
+    """
+    url = request.query_params.get("url")
+    if not url:
+        return Response(content="Missing 'url' parameter", status_code=400)
+
+    parsed_url = urlparse(url)
+    target_url = url
+    is_internal = False
+
+    # --- 策略 1: 路径合规判定 (只允许 uploaded_files 访问内网) ---
+    if 'uploaded_files' in parsed_url.path:
+        is_internal = True
+        # 强制路由到本地服务器
+        from py.get_setting import get_host, get_port
+        HOST, PORT = get_host(), get_port()
+        if HOST == '0.0.0.0': HOST = '127.0.0.1'
+        modified_parsed = parsed_url._replace(netloc=f'{HOST}:{PORT}')
+        target_url = urlunparse(modified_parsed)
+    else:
+        # --- 策略 2: 外部请求安全检查 ---
+        # A. SSRF 防护 (放行 Fake-IP 198.18.x.x)
+        if is_private_ip(parsed_url.hostname):
+            return Response(content="Security Block: Private IP access forbidden", status_code=403)
+        
+        # B. Robots.txt 协议合规检查
+        if not await check_robots_txt(url):
+            return Response(content="Compliance Block: Denied by robots.txt", status_code=403)
+
+    # --- 准备请求参数 ---
+    method = request.method
+    body = await request.body()
+    
+    # Header 处理
+    # 禁止前端透传某些敏感 Header
+    excluded_headers = {'host', 'content-length', 'connection', 'accept-encoding', 'cookie'}
+    proxy_headers = {
+        "User-Agent": USER_AGENT,
+        "Accept": "*/*"
     }
 
-    # 2. 显式配置 trust_env=True (虽然是默认值，但强调一下)
-    async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=30.0, trust_env=True) as client:
+    # 合并前端自定义 Header
+    custom_headers_str = request.query_params.get("headers")
+    if custom_headers_str:
         try:
-            resp = await client.get(url, headers=headers)
-            print(f"Response Status: {resp.status_code}")
-            
-            if resp.status_code != 200:
-                return Response(content=resp.content, status_code=resp.status_code, media_type="text/plain")
+            custom_data = json.loads(custom_headers_str)
+            for k, v in custom_data.items():
+                if k.lower() not in excluded_headers:
+                    proxy_headers[k] = v
+        except:
+            pass
 
-            return Response(content=resp.content, media_type="application/xml")
-
-        except httpx.ConnectError as e:
-            # 专门捕获连接错误
-            err_msg = f"连接失败 (ConnectError)。原因可能是：1. 没开代理且目标被墙 2. 代理端口配置错误。详细: {e}"
-            print(f"[RSS Proxy Error] {err_msg}")
-            return Response(content=f"<error>{err_msg}</error>", status_code=502, media_type="text/xml")
+    # --- 执行代理请求 ---
+    # verify=False 慎用，但在代理场景中为了兼容自签名证书有时需要
+    # follow_redirects=True 允许重定向
+    async with httpx.AsyncClient(verify=False, follow_redirects=True, timeout=30.0) as client:
+        try:
+            resp = await client.request(
+                method=method,
+                url=target_url,
+                headers=proxy_headers,
+                content=body if body else None
+            )
             
+            # 过滤掉响应中的某些头，防止影响前端
+            safe_resp_headers = {}
+            for k, v in resp.headers.items():
+                if k.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']:
+                    safe_resp_headers[k] = v
+
+            # 注入 CORS 头确保前端能读到内容
+            safe_resp_headers["Access-Control-Allow-Origin"] = "*"
+
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers=safe_resp_headers,
+                media_type=resp.headers.get("content-type")
+            )
+
         except Exception as e:
-            print(f"[RSS Proxy Error] Other: {repr(e)}")
-            traceback.print_exc()
-            return Response(content=f"<error>{str(e)}</error>", status_code=500, media_type="text/xml")
-
+            err_msg = f"Proxy Error: {str(e)}"
+            return Response(content=err_msg, status_code=502)
+        
 # 存储活跃的ASR WebSocket连接
 asr_connections = []
 
@@ -4345,7 +4442,6 @@ async def funasr_recognize(audio_data: bytes, funasr_settings: dict,ws: WebSocke
             
     except Exception as e:
         print(f"FunASR recognition error: {e}")
-        import traceback
         traceback.print_exc()
         return f"FunASR识别错误: {str(e)}"
 
@@ -4579,7 +4675,6 @@ async def asr_websocket_endpoint(websocket: WebSocket):
                         print(f"ASR WebSocket disconnected: {connection_id}")
                     except Exception as e:
                         print(f"ASR WebSocket error: {e}")
-                        import traceback
                         traceback.print_exc()
     finally:
         # 清理资源
@@ -4670,7 +4765,6 @@ async def asr_transcription(
         
     except Exception as e:
         print(f"ASR HTTP interface error: {e}")
-        import traceback
         traceback.print_exc()
         
         return JSONResponse(
@@ -4777,7 +4871,6 @@ async def funasr_recognize_offline(audio_data: bytes, funasr_settings: dict) -> 
             
     except Exception as e:
         print(f"FunASR offline recognition error: {e}")
-        import traceback
         traceback.print_exc()
         return f"FunASR识别错误: {str(e)}"
 
@@ -5012,7 +5105,32 @@ async def text_to_speech(request: Request):
         new_voice = data.get('voice','default')
         tts_settings = data['ttsSettings']
         if new_voice in tts_settings['newtts'] and new_voice!='default':
-            tts_settings = tts_settings['newtts'][new_voice]
+            # 获取新声音的配置
+            voice_settings = tts_settings['newtts'][new_voice]
+            parent_settings = tts_settings
+            
+            # 从父配置继承关键字段（只继承非空值）
+            inherited_fields = ['api_key', 'base_url', 'model', 'selectedProvider', 'vendor']
+            for field in inherited_fields:
+                # 只在子配置中不存在或为空，且父配置中有非空值时继承
+                child_value = voice_settings.get(field, '')
+                parent_value = parent_settings.get(field, '')
+                if not child_value and parent_value:
+                    voice_settings[field] = parent_value
+            
+            # 如果有selectedProvider但仍缺少api_key，从modelProviders中查找
+            selected_provider_id = voice_settings.get('selectedProvider')
+            if selected_provider_id and not voice_settings.get('api_key'):
+                model_providers = parent_settings.get('modelProviders', [])
+                for provider in model_providers:
+                    if provider.get('id') == selected_provider_id:
+                        voice_settings['api_key'] = provider.get('apiKey', '')
+                        voice_settings['base_url'] = provider.get('url', '')
+                        voice_settings['model'] = provider.get('modelId', '')
+                        voice_settings['vendor'] = provider.get('vendor', '')
+                        break
+            
+            tts_settings = voice_settings
         index = data['index']
         tts_engine = tts_settings.get('engine', 'edgetts')
                 
@@ -5106,9 +5224,14 @@ async def text_to_speech(request: Request):
             custom_streaming = tts_settings.get('customStream', False)
             
             async def generate_audio():
+                safe_tts_url = sanitize_url(
+                    input_url=custom_tt_server,
+                    default_base="http://localhost:5000", # 这里填你代码里原本的默认 TTS 地址
+                    endpoint=""  # 因为 TTS URL 通常已经包含了路径
+                )
                 async with httpx.AsyncClient(timeout=60.0) as client:
                     try:
-                        async with client.stream("GET", custom_tt_server, params=params) as response:
+                        async with client.stream("GET", safe_tts_url, params=params) as response:
                             response.raise_for_status()
                             
                             if custom_streaming:
@@ -5478,61 +5601,90 @@ async def text_to_speech(request: Request):
 async def get_system_voices():
     """
     获取系统可用的 pyttsx3 音色列表。
-    返回格式适配前端下拉框组件。
+    已针对 macOS 进行特殊过滤，去除特效音和不可用音色。
     """
     import pyttsx3
-    # 定义同步函数，用于提取音色信息
+
     def fetch_voices_sync():
         try:
-            # 初始化引擎
-            # 注意：在某些服务器环境(无音频设备)下初始化可能会失败，需要捕获异常
+            # 1. 定义 macOS 特有的怪诞音色黑名单 (Novelty Voices)
+            # 这些音色通常是用来唱哥、发怪声的，不适合阅读文本
+            mac_novelty_voices = {
+                'Albert', 'Bad News', 'Bahh', 'Bells', 'Boing', 'Bubbles', 'Cellos',
+                'Deranged', 'Good News', 'Hysterical', 'Pipe Organ', 'Trinoids', 
+                'Whisper', 'Zarvox', 'Organ'
+            }
+
             engine = pyttsx3.init()
             voices = engine.getProperty('voices')
             
             voice_list = []
             for v in voices:
-                # 尝试获取语言信息，有些引擎返回的是列表，有些是字节
+                voice_name = v.name
+                voice_id = v.id
+
+                # -----------------------------
+                # macOS 专属过滤逻辑
+                # -----------------------------
+                if sys.platform == 'darwin':
+                    # 过滤策略 A: 排除黑名单中的特效音
+                    if voice_name in mac_novelty_voices:
+                        continue
+                    
+                    # 过滤策略 B: 排除 ID 中包含 'siri' 的音色
+                    # 原因：pyttsx3 基于旧版 NSSpeechSynthesizer，通常无法驱动 Siri 在线/神经音色，
+                    # 强行调用会导致静音或报错。建议只保留本地离线音色。
+                    if 'siri' in voice_id.lower():
+                        continue
+                        
+                    # 过滤策略 C (可选): 某些无效音色可能没有语言属性
+                    if not v.languages:
+                        continue
+
+                # -----------------------------
+                # 通用：修复语言解析 (重点修复 Mac 返回 bytes 的问题)
+                # -----------------------------
                 lang = "Unknown"
                 if hasattr(v, 'languages') and v.languages:
-                    # 处理不同平台返回的语言格式差异
-                    if isinstance(v.languages, list) and len(v.languages) > 0:
-                        lang = str(v.languages[0])
+                    raw_lang = v.languages[0] if isinstance(v.languages, list) else v.languages
+                    
+                    # 处理 Mac 上可能返回 bytes 的情况 (如 b'\x05en_US')
+                    if isinstance(raw_lang, bytes):
+                        try:
+                            # 尝试解码，通常是 utf-8 或 mac-roman，这里简单处理转字符串
+                            lang = raw_lang.decode('utf-8', errors='ignore')
+                            # 移除可能存在的控制字符
+                            lang = ''.join([c for c in lang if c.isprintable()])
+                        except:
+                            lang = str(raw_lang)
                     else:
-                        lang = str(v.languages)
+                        lang = str(raw_lang)
 
                 voice_list.append({
-                    "id": v.id,          # 传递给后端 TTS 接口的 value
-                    "name": v.name,      # 前端显示的 label
-                    "lang": lang,        # 辅助信息：语言
-                    "gender": getattr(v, 'gender', 'Unknown') # 辅助信息：性别（如果可用）
+                    "id": voice_id,
+                    "name": voice_name,
+                    "lang": lang,
+                    "gender": getattr(v, 'gender', 'Unknown')
                 })
+            
             return voice_list
             
         except ImportError:
-            print("错误: 未找到 pyttsx3 驱动 (如 espeak, nsss, sapi5)")
-            return []
-        except RuntimeError as e:
-            print(f"pyttsx3 初始化失败: {str(e)}")
+            print("错误: 未找到 pyttsx3 驱动")
             return []
         except Exception as e:
-            print(f"获取系统音色未知错误: {str(e)}")
+            print(f"获取系统音色错误: {str(e)}")
             return []
 
     try:
-        # 在线程池中运行，避免阻塞主进程
         available_voices = await asyncio.to_thread(fetch_voices_sync)
-        
         return {
             "count": len(available_voices),
             "voices": available_voices
         }
     except Exception as e:
-        return JSONResponse(
-            status_code=500, 
-            content={"error": f"无法获取音色列表: {str(e)}"}
-        )
-
-
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
 async def convert_to_opus_simple(audio_data):
     """使用pydub将音频转换为opus格式（适合飞书）"""
     from pydub import AudioSegment
