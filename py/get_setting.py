@@ -67,6 +67,13 @@ DEFAULT_EBD_DIR = os.path.join(USER_DATA_DIR, 'ebd')
 SETTINGS_FILE = os.path.join(USER_DATA_DIR, 'settings.json')
 CONFIG_BASE_PATH = os.path.join(base_path, 'config')
 SETTINGS_TEMPLATE_FILE = os.path.join(CONFIG_BASE_PATH, 'settings_template.json')
+BLOCKLIST_FILE = os.path.join(CONFIG_BASE_PATH, 'blocklist.json')
+
+blocklist = []
+if os.path.exists(BLOCKLIST_FILE):
+    with open(BLOCKLIST_FILE, 'r', encoding='utf-8') as f:
+        blocklist = json.load(f)
+BLOCKLIST = set(blocklist)
 
 # --- 静态资源路径 ---
 DEFAULT_VRM_DIR = os.path.join(base_path, 'vrm')

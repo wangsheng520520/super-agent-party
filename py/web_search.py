@@ -467,7 +467,7 @@ async def jina_crawler_async(original_url):
         return await loop.run_in_executor(None, sync_crawler)
     except Exception as e:
         print(f"Async execution error: {e}")
-        return ""
+        return str(e)
 
 jina_crawler_tool = {
     "type": "function",
@@ -534,7 +534,7 @@ async def Crawl4Ai_search_async(original_url):
         return await loop.run_in_executor(None, sync_search)
     except Exception as e:
         print(f"Async execution error: {e}")
-        return ""
+        return str(e)
 
 Crawl4Ai_tool = {
     "type": "function",

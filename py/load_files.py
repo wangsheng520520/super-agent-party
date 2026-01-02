@@ -14,7 +14,7 @@ from odf import text
 from odf.opendocument import load  # ODF 处理移动到这里避免重复导入
 from pptx import Presentation
 from urllib.parse import urlparse, urlunparse
-from py.get_setting  import get_host,get_port
+from py.get_setting  import get_host,get_port,BLOCKLIST
 import zipfile
 import xml.etree.ElementTree as ET
 # 平台检测
@@ -89,8 +89,17 @@ def is_private_ip(hostname):
         
     return False
 
+def get_domain(url: str) -> str:
+    return urlparse(url).netloc.lower()
+
 async def check_robots_txt(url):
     """异步检查 robots.txt 合规性"""
+    domain = get_domain(url)
+
+    # 先看黑名单
+    if domain in BLOCKLIST:
+        return False
+
     parsed = urlparse(url)
     base_url = f"{parsed.scheme}://{parsed.netloc}"
     
