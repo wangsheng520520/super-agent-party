@@ -10229,7 +10229,6 @@ clearSegments() {
     this.showExtensionsDialog = false;
     this.expandChatArea();
     this.collapseSidePanel();
-    this.messages[0].content = '';
   },
   // 打开扩展选择对话框
   openExtensionsDialog() {
@@ -10701,7 +10700,6 @@ async togglePlugin(plugin) {
 
     // 下面逻辑你原来就有，只把 url 换成异步得到的即可
     this.showExtensionsDialog = false;
-    this.messages[0].content = extension.systemPrompt || '';
     let windowWidth = 800;
     let windowHeight = 600;
     if (window.electronAPI && window.electronAPI.openExtensionWindow) {
