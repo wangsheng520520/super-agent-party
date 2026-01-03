@@ -1283,9 +1283,18 @@ let vue_methods = {
             }
         }
         // 新增：处理工具输入
-        else if (data.type === 'update_user_input') {
+        else if (data.type === 'update_tool_input') {
           this.userInput = data.data.text;
           this.sendMessage(role = 'system')
+        }
+        // 新增：处理TTS输入
+        else if (data.type === 'start_tts') {
+          this.readConfig.longText = data.data.text;
+          this.startRead();
+        }
+        // 新增：停止TTS
+        else if (data.type === 'stop_tts') {
+          this.stopRead();
         }
         // 新增：处理关闭扩展侧边栏
         else if (data.type === 'trigger_close_extension') {
@@ -10229,7 +10238,6 @@ clearSegments() {
     this.showExtensionsDialog = false;
     this.expandChatArea();
     this.collapseSidePanel();
-    this.messages[0].content = '';
   },
   // 打开扩展选择对话框
   openExtensionsDialog() {
@@ -10701,7 +10709,6 @@ async togglePlugin(plugin) {
 
     // 下面逻辑你原来就有，只把 url 换成异步得到的即可
     this.showExtensionsDialog = false;
-    this.messages[0].content = extension.systemPrompt || '';
     let windowWidth = 800;
     let windowHeight = 600;
     if (window.electronAPI && window.electronAPI.openExtensionWindow) {
