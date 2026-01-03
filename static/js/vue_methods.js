@@ -1295,6 +1295,7 @@ let vue_methods = {
         // 新增：停止TTS
         else if (data.type === 'stop_tts') {
           this.stopRead();
+          this.readConfig.longText = '';
         }
         // 新增：处理关闭扩展侧边栏
         else if (data.type === 'trigger_close_extension') {
