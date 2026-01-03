@@ -7409,6 +7409,7 @@ async def websocket_endpoint(websocket: WebSocket):
     connection_id = str(shortuuid.ShortUUID().random(length=8))
     # 标记该连接是否发送过提示词（用于判断断开时是否需要发送移除指令）
     has_sent_prompt = False
+    has_start_tts = False
 
     try:
         async with settings_lock:
@@ -7499,6 +7500,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     })
             # 把文字传给主界面TTS并播放
             elif data.get("type") == "start_read":
+                has_start_tts = True
                 read_input = data.get("data", {}).get("text", "")
                 for connection in active_connections:
                     await connection.send_json({
@@ -7569,6 +7571,17 @@ async def websocket_endpoint(websocket: WebSocket):
                         "data": {
                             "id": connection_id 
                         }
+                    })
+                except Exception:
+                    pass
+        if has_start_tts:
+            print(f"Extension {connection_id} disconnected. Removing tts.")
+            for connection in active_connections:
+                try:
+                    # 发送移除指令，只携带 ID
+                    await connection.send_json({
+                        "type": "stop_tts",
+                        "data": {}
                     })
                 except Exception:
                     pass
