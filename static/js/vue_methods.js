@@ -1283,9 +1283,18 @@ let vue_methods = {
             }
         }
         // 新增：处理工具输入
-        else if (data.type === 'update_user_input') {
+        else if (data.type === 'update_tool_input') {
           this.userInput = data.data.text;
           this.sendMessage(role = 'system')
+        }
+        // 新增：处理TTS输入
+        else if (data.type === 'start_tts') {
+          this.readConfig.longText = data.data.text;
+          this.startRead();
+        }
+        // 新增：停止TTS
+        else if (data.type === 'stop_tts') {
+          this.stopRead();
         }
         // 新增：处理关闭扩展侧边栏
         else if (data.type === 'trigger_close_extension') {

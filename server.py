@@ -7474,6 +7474,22 @@ async def websocket_endpoint(websocket: WebSocket):
                         "type": "update_tool_input",
                         "data": {"text": tool_input}
                     })
+            # 把文字传给主界面TTS并播放
+            elif data.get("type") == "start_read":
+                read_input = data.get("data", {}).get("text", "")
+                for connection in active_connections:
+                    await connection.send_json({
+                        "type": "start_tts",
+                        "data": {"text": read_input}
+                    })
+
+            # 停止主界面TTS并清空要播放的内容
+            elif data.get("type") == "stop_read":
+                for connection in active_connections:
+                    await connection.send_json({
+                        "type": "stop_tts",
+                        "data": {}
+                    })
 
             elif data.get("type") == "trigger_close_extension":
                 for connection in active_connections:
