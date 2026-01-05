@@ -330,6 +330,7 @@ function createSkeletonWindow() {
       webSecurity: false,
       devTools: isDev,
       partition: 'persist:main-session',
+      webviewTag: true,
     }
   })
 

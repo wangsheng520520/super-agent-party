@@ -803,6 +803,12 @@ const app = Vue.createApp({
     if (this.ttsSettings && this.ttsSettings.engine === 'systemtts') {
       this.fetchSystemVoices();
     }
+    document.addEventListener('click', (e) => {
+        const selector = document.querySelector('.engine-selector');
+        if (selector && !selector.contains(e.target)) {
+            this.showEngineDropdown = false;
+        }
+    });
   },
   beforeUnmount() {
     clearInterval(this.nodeTimer);
@@ -946,9 +952,9 @@ const app = Vue.createApp({
       // 如果没有找到符合条件的消息
       return '';
     },
-  currentViewName() {
-    return this.currentExtension ? this.currentExtension.name : this.t('defaultView');
-  },
+    currentViewName() {
+      return this.currentExtension ? this.currentExtension.name : this.t('defaultView');
+    },
     /* 计算属性：默认模板 */
     defaultSidePanelHTML() {
       // 如果用户已给出自定义模板，就直接用
@@ -1290,6 +1296,9 @@ const app = Vue.createApp({
         p => p.id === this.settings.selectedProvider
       );
     },
+    currentTab() {
+        return this.browserTabs.find(t => t.id === this.currentTabId);
+    },
   },
   methods: {
     ...vue_methods,
@@ -1320,8 +1329,12 @@ const app = Vue.createApp({
         }
       }
     }
-  }
-
+  },
+  created() {
+      if (this.browserTabs.length > 0) {
+          this.currentTabId = this.browserTabs[0].id;
+      }
+  },
 });
 
 function showNotification(message, type = 'success') {

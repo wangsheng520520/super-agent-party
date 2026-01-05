@@ -11651,4 +11651,268 @@ async togglePlugin(plugin) {
         return '';
     },
 
+
+    // AI浏览器相关
+    // 切换标签
+    switchTab(id) {
+        this.currentTabId = id;
+        const tab = this.browserTabs.find(t => t.id === id);
+        if (tab) {
+            // 更新地址栏
+            this.urlInput = tab.url; 
+            // 如果是欢迎页，清空地址栏显示
+            if (!tab.url) this.urlInput = '';
+        }
+    },
+
+    // 添加新标签
+    addNewTab() {
+        const newTab = {
+            id: Date.now(),
+            title: 'New Tab',
+            url: '',
+            favicon: '',
+            isLoading: false,
+            canGoBack: false,
+            canGoForward: false
+        };
+        this.browserTabs.push(newTab);
+        this.switchTab(newTab.id);
+    },
+
+    // 关闭标签
+    closeTab(id, event) {
+        if (event) event.stopPropagation(); // 防止触发点击切换
+        
+        const index = this.browserTabs.findIndex(t => t.id === id);
+        if (index === -1) return;
+
+        // 如果关闭的是当前标签，需要切换到另一个
+        if (this.currentTabId === id) {
+            if (this.browserTabs.length > 1) {
+                // 优先切到右边，没右边切左边
+                const nextTab = this.browserTabs[index + 1] || this.browserTabs[index - 1];
+                this.currentTabId = nextTab.id;
+                this.urlInput = nextTab.url;
+            } else {
+                // 如果只剩这一个，重置它而不是删除
+                this.addNewTab(); // 加个新的
+                this.browserTabs.splice(index, 1); // 删掉旧的
+                return;
+            }
+        }
+        
+        this.browserTabs.splice(index, 1);
+    },
+
+    // 地址栏回车
+    handleUrlEnter() {
+        let val = this.urlInput.trim();
+        if (!val) return;
+
+        // 简单的 URL 补全逻辑
+        if (!/^https?:\/\//i.test(val)) {
+            // 如果看起来像域名
+            if (/^([\w-]+\.)+[\w-]+/.test(val) && !val.includes(' ')) {
+                val = 'https://' + val;
+            } else {
+                // 否则当做搜索
+                if (this.searchEngine === 'google') {
+                    val = `https://www.google.com/search?q=${encodeURIComponent(val)}`;
+                } else {
+                    val = `https://www.bing.com/search?q=${encodeURIComponent(val)}`;
+                }
+            }
+        }
+
+        this.navigateTo(val);
+    },
+
+    // 欢迎页搜索回车
+    handleWelcomeSearch() {
+        const query = this.welcomeSearchQuery.trim();
+        if (!query) return;
+
+        let searchUrl = '';
+        if (this.searchEngine === 'google') {
+            searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        } else {
+            searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+        }
+        
+        this.navigateTo(searchUrl);
+    },
+
+    // 核心导航方法
+    navigateTo(url) {
+        if (!this.currentTab) return;
+        
+        this.currentTab.url = url;
+        this.urlInput = url;
+        
+        // 强制 Vue 更新后，获取 webview DOM 并加载 URL
+        // 因为如果之前 url 为空，webview 是 v-if 销毁状态，现在才渲染出来
+        this.$nextTick(() => {
+            const webview = document.getElementById('webview-' + this.currentTabId);
+            if (webview) {
+                // 如果 webview 刚创建，直接设置 src 属性即可 (Vue绑定已处理)
+                // 但如果它已经存在，调用 loadURL 更稳
+                 webview.loadURL(url);
+            }
+        });
+    },
+    
+    // 回到主页 (新标签页)
+    goHome() {
+        if(this.currentTab) {
+            this.currentTab.url = '';
+            this.currentTab.title = 'New Tab';
+            this.currentTab.favicon = '';
+            this.urlInput = '';
+        }
+    },
+
+    // --- Webview 导航控制 ---
+    getWebview(id) {
+        return document.getElementById('webview-' + (id || this.currentTabId));
+    },
+
+    browserGoBack() {
+        const wv = this.getWebview();
+        if (wv && wv.canGoBack()) wv.goBack();
+    },
+
+    browserGoForward() {
+        const wv = this.getWebview();
+        if (wv && wv.canGoForward()) wv.goForward();
+    },
+
+    browserReload() {
+        const wv = this.getWebview();
+        if(!wv) return;
+        if (this.currentTab.isLoading) {
+            wv.stop();
+        } else {
+            wv.reload();
+        }
+    },
+
+    // --- Webview 事件监听 ---
+    // 注意：这些事件在 HTML 中通过 @did-start-loading="..." 绑定
+    
+    onDidStartLoading(id) {
+        const tab = this.browserTabs.find(t => t.id === id);
+        if (tab) tab.isLoading = true;
+    },
+
+    onDidStopLoading(id) {
+        const tab = this.browserTabs.find(t => t.id === id);
+        if (tab) {
+            tab.isLoading = false;
+            // 更新导航状态
+            const wv = document.getElementById('webview-' + id);
+            if (wv) {
+                tab.canGoBack = wv.canGoBack();
+                tab.canGoForward = wv.canGoForward();
+                // 尝试获取 URL (为了防止重定向后 URL 没变)
+                if (wv.getURL()) {
+                     tab.url = wv.getURL();
+                     if (this.currentTabId === id) this.urlInput = tab.url;
+                }
+            }
+        }
+    },
+
+    onPageTitleUpdated(id, event) {
+        const tab = this.browserTabs.find(t => t.id === id);
+        if (tab) tab.title = event.title;
+    },
+
+    onPageFaviconUpdated(id, event) {
+        const tab = this.browserTabs.find(t => t.id === id);
+        if (tab && event.favicons && event.favicons.length > 0) {
+            tab.favicon = event.favicons[0];
+        }
+    },
+
+    // 处理网页内部 window.open
+    onNewWindow(id, event) {
+        // 在应用内新建标签页打开，而不是弹出新窗口
+        const { url } = event;
+        const newTab = {
+            id: Date.now(),
+            title: 'Loading...',
+            url: url,
+            favicon: '',
+            isLoading: true,
+            canGoBack: false,
+            canGoForward: false
+        };
+        this.browserTabs.push(newTab);
+        this.switchTab(newTab.id);
+    },
+    
+    onDomReady(id) {
+         // 可以在这里注入自定义 CSS 或 JS 到页面中
+         // const wv = document.getElementById('webview-' + id);
+         // wv.insertCSS('body { font-family: sans-serif; }')
+    },
+
+    // 切换引擎下拉
+    toggleEngineDropdown() {
+        this.showEngineDropdown = !this.showEngineDropdown;
+    },
+
+    // 设置引擎并关闭下拉
+    setSearchEngine(engine) {
+        this.searchEngine = engine;
+        this.showEngineDropdown = false;
+        // 如果想要切换后自动聚焦输入框
+        this.$nextTick(() => {
+            const input = document.querySelector('.ios-search-input');
+            if(input) input.focus();
+        });
+    },
+
+    // 搜索框失焦处理 (延迟关闭下拉，防止点击菜单项时菜单先消失)
+    handleSearchBlur() {
+        this.isSearchFocused = false;
+        setTimeout(() => {
+            this.showEngineDropdown = false;
+        }, 200);
+    },
+
+    // 修改原有的 addNewTab，确保样式正确
+    addNewTab() {
+        const newTab = {
+            id: Date.now(),
+            title: 'New Tab',
+            url: '',
+            favicon: '',
+            isLoading: false,
+            canGoBack: false,
+            canGoForward: false
+        };
+        this.browserTabs.push(newTab);
+        this.switchTab(newTab.id);
+        
+        // 自动聚焦到欢迎页搜索框
+        this.$nextTick(() => {
+             const input = document.querySelector('.ios-search-input');
+             if(input) input.focus();
+        });
+    },
+
+    handleSelectorEnter() {
+        if (this.dropdownTimer) clearTimeout(this.dropdownTimer);
+        this.showEngineDropdown = true;
+    },
+
+    // 鼠标离开区域：延迟 200ms 关闭，给用户移动鼠标的时间
+    handleSelectorLeave() {
+        this.dropdownTimer = setTimeout(() => {
+            this.showEngineDropdown = false;
+        }, 200); // 200ms 延迟
+    },
+
 }

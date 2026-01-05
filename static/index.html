@@ -334,6 +334,12 @@ function updateElement(el, rawMarkdown, formatFn) {
               </el-icon>
               <template #title>{{ t('deployBot') }}</template>
           </el-menu-item>
+          <el-menu-item index="ai-browser" v-if="isElectron">
+            <el-icon>
+              <i class="fa-brands fa-chrome"></i>
+            </el-icon>
+            <template #title>{{ t('aiBrowser') }}</template>
+          </el-menu-item>
           <el-menu-item index="api-group">
             <el-icon>
               <i class="fa-solid fa-plug"></i>
@@ -12568,6 +12574,155 @@ function updateElement(el, rawMarkdown, formatFn) {
                 </el-form>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- AI Browser Container -->
+        <div v-show="activeMenu === 'ai-browser'" class="page ai-browser-container" v-if="isElectron">
+            
+          <!-- 1. 浏览器顶部区域：标签栏 + 地址栏-->
+          <div class="browser-header">
+              <!-- 标签栏 -->
+              <div class="browser-tabs">
+                  <div 
+                      v-for="tab in browserTabs" 
+                      :key="tab.id"
+                      class="browser-tab"
+                      :class="{ 'active': currentTabId === tab.id }"
+                      @click="switchTab(tab.id)"
+                      @mousedown.middle="closeTab(tab.id, $event)"
+                  >
+                      <div class="tab-content">
+                          <span class="tab-icon" v-if="tab.isLoading"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                          <span class="tab-icon" v-else-if="tab.favicon"><img :src="tab.favicon" /></span>
+                          <span class="tab-icon" v-else><i class="fa-regular fa-compass"></i></span> <!-- 换成了更像Safari的指南针图标 -->
+                          <span class="tab-title">{{ tab.title || t('newTab') }}</span>
+                      </div>
+                      <span class="tab-close" @click.stop="closeTab(tab.id, $event)">
+                          <i class="fa-solid fa-xmark"></i>
+                      </span>
+                  </div>
+                  <button class="new-tab-btn" @click="addNewTab">
+                      <i class="fa-solid fa-plus"></i>
+                  </button>
+              </div>
+
+              <!-- 地址栏/工具栏 (仅在 Tab 有 URL 时显示，或者你想一直显示也可以，这里做成了融合样式) -->
+              <div class="browser-toolbar">
+                  <div class="nav-buttons">
+                      <button class="nav-btn" @click="browserGoBack" :disabled="!currentTab?.canGoBack" title="Back">
+                          <i class="fa-solid fa-chevron-left"></i>
+                      </button>
+                      <button class="nav-btn" @click="browserGoForward" :disabled="!currentTab?.canGoForward" title="Forward">
+                          <i class="fa-solid fa-chevron-right"></i>
+                      </button>
+                      <button class="nav-btn" @click="browserReload" title="Reload">
+                          <i :class="currentTab?.isLoading ? 'fa-solid fa-xmark' : 'fa-solid fa-rotate-right'"></i>
+                      </button>
+                      <button class="nav-btn" @click="goHome" title="Home">
+                          <i class="fa-solid fa-house"></i>
+                      </button>
+                  </div>
+                  
+                  <div class="address-bar-wrapper">
+                    <!-- 这里的输入框也做了极简处理 -->
+                      <el-input 
+                          v-model="urlInput" 
+                          class="ios-address-input" 
+                          placeholder="Search or enter website name"
+                          @keyup.enter="handleUrlEnter"
+                          @focus="$event.target.select()"
+                      >
+                          <template #prefix>
+                              <div class="address-lock-icon">
+                                <i class="fa-solid fa-lock" v-if="currentTab?.url.startsWith('https')"></i>
+                                <i class="fa-solid fa-globe" v-else></i>
+                              </div>
+                          </template>
+                      </el-input>
+                  </div>
+                  
+                  <!-- 右侧菜单按钮占位，保持平衡 -->
+                  <div class="toolbar-placeholder" style="width: 100px;"></div>
+              </div>
+          </div>
+
+          <!-- 2. 浏览器主体 -->
+          <div class="browser-body">
+              
+              <!-- Webview 容器 -->
+              <div 
+                  v-for="tab in browserTabs" 
+                  :key="tab.id" 
+                  class="webview-wrapper"
+                  v-show="currentTabId === tab.id && tab.url"
+              >
+                  <webview 
+                      :src="tab.url" 
+                      :id="'webview-' + tab.id"
+                      class="webview-element"
+                      allowpopups
+                      plugins
+                      partition="persist:browser-session"
+                      @did-start-loading="onDidStartLoading(tab.id)"
+                      @did-stop-loading="onDidStopLoading(tab.id)"
+                      @page-title-updated="onPageTitleUpdated(tab.id, $event)"
+                      @page-favicon-updated="onPageFaviconUpdated(tab.id, $event)"
+                      @new-window="onNewWindow(tab.id, $event)"
+                      @dom-ready="onDomReady(tab.id)"
+                  ></webview>
+              </div>
+
+              <!-- 3. 极简 IOS 风格欢迎页 -->
+              <div class="browser-welcome-page" v-if="currentTab && !currentTab.url">
+                  <div class="ios-welcome-container">
+                      
+                      <h1 class="ios-title">Welcome to Party</h1>
+                      
+                      <!-- 居中大搜索框 -->
+                      <div class="ios-search-wrapper" :class="{ 'focused': isSearchFocused }">
+                          <!-- 引擎切换器 (左侧) - 修改为悬浮触发 -->
+                          <div class="engine-selector" 
+                            @mouseenter="handleSelectorEnter" 
+                            @mouseleave="handleSelectorLeave">
+                              
+                              <div class="current-engine">
+                                  <i class="fa-brands fa-microsoft" v-if="searchEngine === 'bing'"></i>
+                                  <i class="fa-brands fa-google" v-if="searchEngine === 'google'"></i>
+                                  <i class="fa-solid fa-caret-down"></i>
+                              </div>
+                              
+                              <!-- 下拉菜单 -->
+                              <div class="engine-dropdown" v-show="showEngineDropdown">
+                                  <div class="engine-item" @click="setSearchEngine('bing')" :class="{active: searchEngine === 'bing'}">
+                                      <i class="fa-brands fa-microsoft"></i> Bing
+                                  </div>
+                                  <div class="engine-item" @click="setSearchEngine('google')" :class="{active: searchEngine === 'google'}">
+                                      <i class="fa-brands fa-google"></i> Google
+                                  </div>
+                              </div>
+                          </div>
+
+                          <!-- 输入框 -->
+                          <input 
+                              type="text" 
+                              v-model="welcomeSearchQuery" 
+                              class="ios-search-input"
+                              :placeholder="searchEngine === 'bing' ? 'Search with Bing' : 'Search with Google'"
+                              @focus="isSearchFocused = true"
+                              @blur="isSearchFocused = false"
+                              @keyup.enter="handleWelcomeSearch"
+                          >
+                          
+                          <!-- 搜索按钮 (右侧) -->
+                          <button class="ios-search-btn" @click="handleWelcomeSearch">
+                              <i class="fa-solid fa-arrow-right"></i>
+                          </button>
+                      </div>
+
+                  </div>
+              </div>
+
           </div>
         </div>
       </el-main>

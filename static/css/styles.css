@@ -5572,3 +5572,441 @@ hr.footnotes-sep {
 }
 
 /* --- END OF STREAMDOWN OPTIMIZATIONS --- */
+
+
+/* =========================================
+   IOS Minimalist Browser Theme (Theme Adapted)
+   ========================================= */
+
+/* 容器 */
+.ai-browser-container {
+    display: flex;
+    flex-direction: column;
+    height: 100% !important; /* 强制占满父容器高度 */
+    /* 使用页面背景变量 */
+    background-color: var(--el-bg-color-page); 
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    transition: background-color 0.3s;
+}
+
+/* --- 顶部 Header --- */
+.browser-header {
+    /* 使用混合色实现半透明：取85%的主题背景色，混入透明色 */
+    background: color-mix(in srgb, var(--el-bg-color) 85%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--el-border-color-light);
+    z-index: 100;
+    padding-bottom: 8px;
+}
+
+/* --- 标签栏 --- */
+.browser-tabs {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px 0 12px;
+    gap: 6px;
+    overflow-x: auto;
+}
+
+/* 标签样式 */
+.browser-tab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 180px;
+    height: 34px;
+    background: transparent;
+    border-radius: 8px;
+    padding: 0 10px;
+    font-size: 12px;
+    color: var(--el-text-color-regular); /* 适配文字颜色 */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.browser-tab.active {
+    background: var(--el-bg-color); /* 激活时使用卡片背景 */
+    color: var(--el-text-color-primary);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05); /* 阴影保持微弱 */
+    border: 1px solid var(--el-border-color-lighter);
+}
+
+.tab-content {
+    display: flex;
+    align-items: center;
+    width: 85%;
+    overflow: hidden;
+}
+
+.tab-icon img, .tab-icon i {
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    font-size: 14px;
+    color: var(--el-text-color-secondary);
+}
+
+.browser-tab.active .tab-icon i {
+    color: var(--el-color-primary); /* 激活图标使用主色 */
+}
+
+.tab-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.tab-close {
+    opacity: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    transition: all 0.2s;
+    color: var(--el-text-color-secondary);
+}
+
+.browser-tab:hover .tab-close {
+    opacity: 1;
+}
+.tab-close:hover {
+    background: var(--el-bg-color-page);
+    color: var(--el-color-danger);
+}
+
+.new-tab-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--el-text-color-regular);
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.new-tab-btn:hover {
+    background: var(--el-bg-color-page);
+}
+
+/* --- 工具栏 & 地址栏 --- */
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    gap: 16px;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 4px;
+    width: 140px;
+}
+
+.nav-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    color: var(--el-text-color-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-btn:hover:not(:disabled) {
+    background: var(--el-bg-color-page);
+}
+.nav-btn:disabled {
+    color: var(--el-text-color-placeholder);
+    cursor: default;
+}
+
+.address-bar-wrapper {
+    flex: 1;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* 地址栏 Input */
+.ios-address-input .el-input__wrapper {
+    /* 使用稍深的填充色 */
+    background: var(--el-bg-color-page) !important; 
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    padding: 4px 12px !important;
+    height: 36px;
+    transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.ios-address-input .el-input__wrapper.is-focus {
+    background-color: var(--el-bg-color) !important;
+    /* 聚焦光环使用主色 */
+    box-shadow: 0 0 0 2px var(--el-color-primary) !important; 
+}
+
+.ios-address-input .el-input__inner {
+    font-size: 14px;
+    color: var(--el-text-color-primary) !important;
+    text-align: left;
+}
+.address-lock-icon {
+    color: var(--el-text-color-secondary);
+    margin-right: 6px;
+    font-size: 12px;
+}
+
+
+/* --- 浏览器主体 --- */
+.browser-body {
+    flex: 1;              /* 占据剩余垂直空间 */
+    position: relative;   /* 关键：为内部绝对定位做基准 */
+    width: 100%;
+    height: 0;            /* 关键技巧：配合 flex:1 使用，防止被内部内容撑大导致滚动条 */
+    background: var(--el-bg-color);
+    overflow: hidden;
+}
+
+/* --- 极简欢迎页 (适配版) --- */
+.browser-welcome-page {
+    width: 100%;
+    height: 100%;
+    background: var(--el-bg-color-page);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* 3. Webview 包装器：使用绝对定位强制铺满 */
+.webview-wrapper {
+    position: absolute;   /* 脱离文档流，强制拉伸 */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: flex;        /* 确保内部 webview 能利用 flex 属性 */
+    flex-direction: column;
+}
+
+/* 4. Webview 标签本身 */
+.webview-element {
+    flex: 1;
+    width: 100% !important;
+    height: 100% !important;
+    border: none;
+    display: inline-flex; /* Electron webview 推荐的 display 属性 */
+}
+
+/* 5. 欢迎页也需要绝对定位铺满，否则可能会被挤压 */
+.browser-welcome-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;           /* 确保在 webview 上层（如果有重叠的话，虽然 v-if 控制了） */
+    background: var(--el-bg-color-page);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;     /* 允许欢迎页内容过多时滚动 */
+}
+
+.ios-welcome-container {
+    width: 100%;
+    max-width: 680px;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform: translateY(-10%);
+}
+
+.ios-title {
+    font-size: 48px;
+    font-weight: 700;
+    /* 标题渐变：从主文本色到次文本色 */
+    background: linear-gradient(135deg, var(--el-text-color-primary) 0%, var(--el-text-color-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 40px;
+    letter-spacing: -1px;
+}
+
+/* 搜索框容器 */
+.ios-search-wrapper {
+    width: 100%;
+    height: 60px;
+    /* 搜索框背景：使用覆盖层背景(通常是纯色) + 透明度 */
+    background: var(--bg-color)!important;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 20px;
+    /* 阴影适配 */
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05), 0 2px 10px rgba(0,0,0,0.01);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    z-index: 500; /* 确保下拉菜单不被遮挡 */
+}
+
+/* 悬停和聚焦效果 */
+.ios-search-wrapper:hover {
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0,0,0,0.03);
+    transform: translateY(-1px);
+    border-color: var(--el-border-color);
+}
+
+.ios-search-wrapper.focused {
+    border-color: var(--el-color-primary);
+    /* 光晕使用主色，降低透明度 */
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--el-color-primary) 15%, transparent), 
+                0 15px 50px rgba(0, 0, 0, 0.1);
+}
+
+/* 引擎选择器 */
+.engine-selector {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    /* 增加 padding 让热区变大一点 */
+    padding-right: 12px;
+    padding-left: 4px; 
+    border-right: 1px solid var(--el-border-color-lighter);
+    background: var(--bg-color)!important;
+    cursor: pointer;
+}
+
+
+.current-engine {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    color: var(--el-text-color-primary);
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+.current-engine i {
+    font-size: 18px;
+}
+.current-engine .fa-caret-down {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+}
+
+/* 下拉菜单 */
+.engine-dropdown {
+    position: absolute;
+    /* 1. 改为 calc 方式定位，不使用 margin-top */
+    top: calc(100% + 10px); 
+    left: 0;
+    width: 140px;
+    background: var(--bg-color)!important;
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    border: 1px solid var(--el-border-color-light);
+    padding: 6px;
+    z-index: 1000;
+    /* margin-top: 10px;  <-- 2. 删掉这一行，因为我们用 top: calc() 代替了 */
+    animation: dropdownFade 0.2s ease-out;
+}
+.engine-dropdown::before {
+    content: '';
+    position: absolute;
+    /* 向上延伸 10px，填补与按钮之间的空隙 */
+    top: -10px; 
+    left: 0;
+    width: 100%;
+    height: 10px;
+    background: transparent; /* 透明，不可见但可交互 */
+}
+
+@keyframes dropdownFade {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.engine-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--el-text-color);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.engine-item.active {
+    color: var(--el-color-primary);
+    background: var(--el-color-primary-light-9);
+}
+
+/* 输入框 */
+.ios-search-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    height: 100%;
+    padding: 0 16px;
+    font-size: 18px;
+    color: var(--el-text-color)!important;
+    background: var(--bg-color)!important;
+    outline: none;
+}
+.ios-search-input::placeholder {
+    color: var(--el-text-color-placeholder);
+    font-weight: 300;
+}
+
+/* 搜索按钮 */
+.ios-search-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--el-color-primary);
+    border: none;
+    color: #fff; /* 按钮文字固定白色 */
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    opacity: 0;
+    transform: scale(0.8);
+}
+
+.ios-search-wrapper.focused .ios-search-btn,
+.ios-search-wrapper:hover .ios-search-btn {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.ios-search-btn:hover {
+    /* 悬停加深颜色：混合黑色 */
+    background: color-mix(in srgb, var(--el-color-primary) 90%, black);
+    transform: scale(1.1);
+}
