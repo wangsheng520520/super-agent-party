@@ -11937,7 +11937,52 @@ async togglePlugin(plugin) {
 
             window.electronAPI.showContextMenu(menuType, data);
         });
+        this.updateWebviewTheme(tabId);
     },
+
+  // 新增：更新 Webview 内部样式的函数
+  updateWebviewTheme(tabId) {
+    const webview = document.getElementById('webview-' + tabId);
+    if (!webview) return;
+
+    // 1. 获取当前 URL，判断是否为 Markdown 或 纯文本文件
+    // 如果是普通网页（如 Google），则不注入，以免破坏人家原本的样式
+    const url = webview.getURL();
+    const isRawFile = url.endsWith('.md') || url.endsWith('.txt') || url.endsWith('.log') || url.includes('/uploaded_files/');
+
+    if (!isRawFile) return;
+
+    // 2. 获取主应用当前的 CSS 变量值
+    const rootStyles = getComputedStyle(document.documentElement);
+    const bgColor = rootStyles.getPropertyValue('--el-bg-color-page').trim();
+    const textColor = rootStyles.getPropertyValue('--text-color').trim();
+    
+    // 3. 构建要注入的 CSS
+    // 针对 Chrome 默认的文本查看器结构 (body > pre) 进行样式覆盖
+    const css = `
+      body {
+        background-color: ${bgColor} !important;
+        color: ${textColor} !important;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      /* Markdown/文本通常被包裹在 pre 标签中 */
+      pre {
+        color: ${textColor} !important;
+        background-color: transparent !important;
+        white-space: pre-wrap; /* 自动换行，防止需横向滚动 */
+        word-wrap: break-word;
+      }
+      /* 针对可能存在的图片做自适应 */
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+    `;
+
+    // 4. 注入样式
+    // insertCSS 返回一个 promise，但通常不需要等待它
+    webview.insertCSS(css).catch(err => console.log('Insert CSS error:', err));
+  },
 
     // 切换引擎下拉
     toggleEngineDropdown() {
