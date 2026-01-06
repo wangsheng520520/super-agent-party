@@ -169,7 +169,7 @@ async def handle_url(url):
         if HOST == '0.0.0.0': HOST = '127.0.0.1'
         
         # 使用 sanitize_url 强行重写域名部分
-        target_url = sanitize_url(url, force_netloc=f"{HOST}:{PORT}")
+        target_url = sanitize_url(url, f"http://{HOST}:{PORT}", '')
         
         async with aiohttp.ClientSession() as session:
             try:
