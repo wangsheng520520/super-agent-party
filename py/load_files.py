@@ -122,7 +122,7 @@ async def check_robots_txt(url):
     ROBOTS_CACHE[base_url] = rp
     return rp.can_fetch(USER_AGENT, url)
 
-def sanitize_url(input_url: str, default_base: str, endpoint: str) -> str:
+def sanitize_url(input_url: str, default_base: str = "", endpoint: str = "") -> str:
     """
     通用 URL 安全过滤与重构函数
     1. 显式解析并验证协议
