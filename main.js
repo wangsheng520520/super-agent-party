@@ -824,6 +824,27 @@ app.whenReady().then(async () => {
       app.exit();
     })
 
+    ipcMain.handle('save-screenshot-direct', async (event, { buffer }) => {
+      // 1. 确定保存路径: userData/uploaded_files
+      // 确保这个路径和 Python 后端挂载的静态目录一致
+      const uploadDir = path.join(app.getPath('userData'),'Super-Agent-Party', 'uploaded_files');
+      
+      // 2. 确保目录存在
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // 3. 生成文件名
+      const filename = `screenshot-${Date.now()}-${Math.random().toString(36).substr(2, 6)}.jpg`;
+      const filePath = path.join(uploadDir, filename);
+
+      // 4. 写入文件
+      fs.writeFileSync(filePath, Buffer.from(buffer));
+      
+      // 5. 只返回文件名，由前端拼接 URL
+      return filename;
+    });
+
     // 在 main.js 的 app.whenReady().then(async () => { 中添加以下代码
 
     ipcMain.handle('open-extension-window', async (_, { url, extension }) => {

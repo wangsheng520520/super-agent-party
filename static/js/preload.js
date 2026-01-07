@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('electron', {
 // 暴露安全接口
 contextBridge.exposeInMainWorld('electronAPI', {
   onNewTab: (callback) => ipcRenderer.on('create-tab', (_, url) => callback(url)),
+  saveScreenshotDirect: (buffer) => ipcRenderer.invoke('save-screenshot-direct', { buffer }),
   // 系统功能
   openExternal: (url) => shell.openExternal(url),
   openPath: (filePath) => shell.openPath(filePath),

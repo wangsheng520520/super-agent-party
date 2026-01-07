@@ -1,9 +1,11 @@
 import json
+import os
 import time
+import uuid
 import requests
 import asyncio
 import websockets
-from py.get_setting import load_settings
+from py.get_setting import UPLOAD_FILES_DIR, get_port, load_settings
 
 # 全局变量，用于保持当前上下文
 CURRENT_PAGE_INDEX = 0
@@ -79,7 +81,9 @@ async def cdp_command(ws_url, method, params=None):
     if not ws_url:
         return {"error": "Target not found"}
     
-    async with websockets.connect(ws_url) as ws:
+    # 修改这里：增加 max_size 参数
+    # 设置为 None 表示不限制大小，或者设置为 10 * 1024 * 1024 (10MB)
+    async with websockets.connect(ws_url, max_size=10 * 1024 * 1024) as ws:
         cmd_id = 1
         message = {
             "id": cmd_id,
@@ -93,105 +97,6 @@ async def cdp_command(ws_url, method, params=None):
             data = json.loads(response)
             if data.get('id') == cmd_id:
                 return data.get('result', {})
-
-# ==========================================
-# Navigation Automation (控制 Vue)
-# ==========================================
-
-async def list_pages():
-    """List currently open pages."""
-    targets = await get_targets()
-    webviews = [t for t in targets if t['type'] == 'webview']
-    
-    pages_info = []
-    for idx, t in enumerate(webviews):
-        pages_info.append({
-            "index": idx,
-            "id": t['id'],
-            "title": t['title'],
-            "url": t['url']
-        })
-    return json.dumps(pages_info, ensure_ascii=False)
-
-async def new_page(url, timeout=0):
-    """Create a new page via Vue."""
-    ws_url = await get_main_window_ws()
-    # 调用 Vue 的 openUrlInNewTab 方法
-    # 注意：window.aiBrowser 是我们在 mounted 中挂载的
-    expression = f"window.aiBrowser.openUrlInNewTab('{url}')"
-    await cdp_command(ws_url, "Runtime.evaluate", {"expression": expression})
-    
-    # 简单等待加载，实际生产可能需要轮询 list_pages 确认
-    if timeout > 0:
-        await asyncio.sleep(timeout / 1000)
-    return "Page creating initiated."
-
-async def close_page(pageIdx):
-    """Close a page by index."""
-    ws_url = await get_main_window_ws()
-    # 1. 获取 Tab ID
-    # 我们需要在 JS 端执行逻辑，或者先 python 获取 ID 再传进去
-    # 这里直接在 JS 端完成更方便
-    js_script = f"""
-    (function() {{
-        const tabId = window.aiBrowser.getTabIdByIndex({pageIdx});
-        if(tabId) {{
-            window.aiBrowser.closeTab(tabId);
-            return "Closed";
-        }}
-        return "Tab not found";
-    }})()
-    """
-    res = await cdp_command(ws_url, "Runtime.evaluate", {"expression": js_script, "returnByValue": True})
-    return res.get('value', 'Error executing close')
-
-async def select_page(pageIdx, bringToFront=True):
-    """Select a page context."""
-    global CURRENT_PAGE_INDEX
-    targets = await get_targets()
-    webviews = [t for t in targets if t['type'] == 'webview']
-    
-    if 0 <= pageIdx < len(webviews):
-        CURRENT_PAGE_INDEX = pageIdx
-        
-        if bringToFront:
-            ws_url = await get_main_window_ws()
-            # 调用 Vue 切换 Tab
-            js_script = f"""
-            (function() {{
-                const tabId = window.aiBrowser.getTabIdByIndex({pageIdx});
-                if(tabId) window.aiBrowser.switchTab(tabId);
-            }})()
-            """
-            await cdp_command(ws_url, "Runtime.evaluate", {"expression": js_script})
-        
-        return f"Selected page index {pageIdx}"
-    return "Page index out of range"
-
-async def navigate_page(url, type="url", ignoreCache=False, timeout=0):
-    """Navigate current page."""
-    ws_url = await get_webview_ws() # 连接当前选中的 Webview
-    
-    if type == "url":
-        await cdp_command(ws_url, "Page.navigate", {"url": url})
-    elif type == "reload":
-        await cdp_command(ws_url, "Page.reload", {"ignoreCache": ignoreCache})
-    elif type == "back":
-        # 获取 History
-        hist = await cdp_command(ws_url, "Page.getNavigationHistory")
-        idx = hist.get('currentIndex')
-        if idx > 0:
-            entry_id = hist['entries'][idx-1]['id']
-            await cdp_command(ws_url, "Page.navigateToHistoryEntry", {"entryId": entry_id})
-    elif type == "forward":
-        hist = await cdp_command(ws_url, "Page.getNavigationHistory")
-        idx = hist.get('currentIndex')
-        entries = hist.get('entries', [])
-        if idx < len(entries) - 1:
-            entry_id = entries[idx+1]['id']
-            await cdp_command(ws_url, "Page.navigateToHistoryEntry", {"entryId": entry_id})
-            
-    return f"Navigated {type}"
 
 # ==========================================
 # Input Automation (Via Vue Controller)
@@ -338,32 +243,19 @@ async def evaluate_script(function, args=None):
     """执行 JS"""
     return await call_vue_method('executeInActiveWebview', [function, args or []])
 
-async def take_screenshot(filePath=None, format="png", fullPage=False, quality=None, uid=None):
+async def take_screenshot(fullPage=False, uid=None):
     """
-    截图。注意：Electron Webview 的 capturePage 主要是视口截图。
+    截图
+    Vue 端已将图片保存到 uploaded_files 目录，并返回了 URL。
     """
-    # Vue 端返回的是 Base64
-    base64_data = await call_vue_method('captureWebviewScreenshot', [fullPage, uid])
+    # 直接调用，返回值就是 URL (例如: http://127.0.0.1:3456/uploaded_files/xxx.jpg)
+    result = await call_vue_method('captureWebviewScreenshot', [fullPage, uid])
     
-    if base64_data.startswith("Error"):
-        return base64_data
-
-    # 如果需要保存到文件
-    if filePath:
-        try:
-            import base64
-            # 去掉 data:image/png;base64, 前缀
-            if ',' in base64_data:
-                base64_data = base64_data.split(',')[1]
-            
-            with open(filePath, "wb") as f:
-                f.write(base64.b64decode(base64_data))
-            return f"Screenshot saved to {filePath}"
-        except Exception as e:
-            return f"Error saving screenshot: {str(e)}"
-            
-    return "Screenshot captured (Base64 data hidden)"
-
+    # 简单的错误检查
+    if not result or result.startswith("Error") or result.startswith("Screenshot Error"):
+        return f"Failed to capture screenshot: {result}"
+        
+    return f"Screenshot saved to {result}"
 
 # ==========================================
 # Tool Definitions (JSON Schemas)
@@ -540,6 +432,91 @@ all_cdp_tools = [
                     "timeout": {"type": "integer", "description": "Timeout in milliseconds (default 1000).","minimum": 0,"default": 1000,"maximum": 5000}
                 },
                 "required": ["text"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "take_screenshot",
+            "description": "Take a screenshot of the current page.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fullPage": {"type": "boolean", "description": "If set to true takes a screenshot of the full page instead of the currently visible viewport. Incompatible with uid."},
+                    "uid": {"type": "string", "description": "The uid of an element on the page from the page content snapshot. If omitted takes a pages screenshot."}
+                },
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fill_form",
+            "description": "Fill multiple form fields at once efficiently.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "elements": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "uid": {"type": "string", "description": "The UID of the input element."},
+                                "value": {"type": "string", "description": "The value to fill."}
+                            },
+                            "required": ["uid", "value"]
+                        },
+                        "description": "List of elements to fill, e.g., [{'uid': 'ai-1', 'value': 'john'}, ...]"
+                    }
+                },
+                "required": ["elements"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "drag",
+            "description": "Drag an element from one position to another using UIDs.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_uid": {"type": "string", "description": "The UID of the element to drag."},
+                    "to_uid": {"type": "string", "description": "The UID of the target element to drop onto."}
+                },
+                "required": ["from_uid", "to_uid"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "handle_dialog",
+            "description": "Handle JavaScript dialogs (alert, confirm, prompt).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["accept", "dismiss"], "description": "Whether to accept or dismiss the dialog."},
+                    "promptText": {"type": "string", "description": "Text to enter if the dialog is a prompt."}
+                },
+                "required": ["action"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "upload_file",
+            "description": "Upload a file to a specific file input element.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "uid": {"type": "string", "description": "The UID of the file input element."},
+                    "filePath": {"type": "string", "description": "The absolute local path of the file to upload."}
+                },
+                "required": ["uid", "filePath"]
             }
         }
     }

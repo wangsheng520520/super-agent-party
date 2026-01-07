@@ -12681,15 +12681,41 @@ async togglePlugin(plugin) {
 
     // --- 11. 截图 (无延迟) ---
     async captureWebviewScreenshot(fullPage = false, uid = null) {
-        // ... (代码保持不变) ...
         const wv = this.getWebview();
         if (!wv) return "Error: No active webview";
         try {
+            // 1. 滚动 (如果指定元素)
             if (uid) {
-                await this.webviewClick(uid); // 注意：这里调用了带延迟的 click，可能会慢一点，如果不想慢，可以去掉
+                await this.webviewClick(uid);
+                await this._humanDelay();
             }
+
+            // 2. 捕获页面
             const image = await wv.capturePage();
-            return image.toDataURL();
+
+            // 3. 缩放 (AI 不需要 4K，1280 宽足够，节省 Token)
+            const size = image.getSize();
+            let resized = image;
+            if (size.width > 1280) {
+                resized = image.resize({ width: 1280 });
+            }
+
+            // 4. 转为 JPEG Buffer (质量 70)
+            const buffer = resized.toJPEG(70);
+
+            // 5. 调用主进程保存文件
+            // 注意：Buffer 通过 IPC 传输非常快，比 Base64 字符串快得多
+            const filename = await window.electronAPI.saveScreenshotDirect(buffer);
+            
+            // 6. 拼接 URL
+            // window.electron.server.port 是在 preload 里暴露的后端端口
+            const host = window.electron.server.host || '127.0.0.1';
+            const port = window.electron.server.port || 3456;
+            
+            const fileUrl = `http://${host}:${port}/uploaded_files/${filename}`;
+            
+            return fileUrl;
+
         } catch (e) {
             return "Screenshot Error: " + e.message;
         }

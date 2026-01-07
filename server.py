@@ -878,13 +878,6 @@ async def tools_change_messages(request: ChatRequest, settings: dict):
         HA_devices = await HA_client.call_tool("GetLiveContext", {})
         HA_message = f"\n\n以下是home assistant连接的设备信息：{HA_devices}\n\n"
         content_append(request.messages, 'system', HA_message)
-    if settings['chromeMCPSettings']['enabled']:
-        if settings['chromeMCPSettings']['type']=='external':
-            chrome_status = await ChromeMCP_client.call_tool("browser_snapshot", {})
-            chromeMCP_message = f"\n\n以下是浏览器的当前信息：{chrome_status}\n\n"
-            content_append(request.messages, 'system', chromeMCP_message)
-        else:
-            pass
     if settings['sqlSettings']['enabled']:
         sql_status = await sql_client.call_tool("all_table_names", {})
         sql_message = f"\n\n以下是当前数据库all_table_names工具的返回结果：{sql_status}\n\n"
