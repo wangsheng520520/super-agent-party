@@ -1045,7 +1045,7 @@ function updateElement(el, rawMarkdown, formatFn) {
 
                 <el-tooltip :content="t('screenshot')" placement="top">
                   <el-button
-                    @click="toggleScreenshot"
+                    @click="toggleScreenshot(false)"
                     class="icon-btn vision-btn"
                     type="default"
                     v-if="MoreButtonDict.find(b => b.name === 'screenshotButton')?.enabled||isCapsuleMode"
@@ -12986,6 +12986,17 @@ function updateElement(el, rawMarkdown, formatFn) {
                           </el-button>
                         </el-tooltip>
 
+                        <el-tooltip :content="t('screenshot')" placement="top">
+                          <el-button
+                            @click="toggleScreenshot(false)"
+                            class="icon-btn vision-btn"
+                            type="default"
+                            v-if="MoreButtonDict.find(b => b.name === 'screenshotButton')?.enabled||isCapsuleMode"
+                            circle>
+                            <i class="fa-solid fa-scissors"></i>
+                          </el-button>
+                        </el-tooltip>
+
                         <el-tooltip :content="t('asr')" placement="top">
                           <el-button
                             @click="toggleASR"
@@ -13031,6 +13042,19 @@ function updateElement(el, rawMarkdown, formatFn) {
 
                     <!-- 输入框区域 -->
                     <div class="input-container" v-if="!isCapsuleMode">
+                      <!-- 紧凑型文件列表 -->
+                      <div class="compact-file-list" v-if="allItems.length">
+                        <div v-for="(item, index) in allItems" :key="index" class="compact-file-item">
+                          <span class="file-name">@{{ item.name }}</span>
+                          <el-button
+                            @click.stop="removeItem(index, item.type)"
+                            class="delete-icon"
+                            circle
+                          >
+                            <i class="fa-solid fa-trash"></i>
+                          </el-button>
+                        </div>
+                      </div>
                       <el-input
                           v-model="userInput"
                           type="textarea"

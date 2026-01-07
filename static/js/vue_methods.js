@@ -9352,24 +9352,38 @@ stopTTSActivities() {
     // 本地状态同步
     this.isFixedWindow = next;
   },
-  async toggleScreenshot () {
-    try {
-      // 1. 调出遮罩并等待选区
-      const rect = await window.electronAPI.showScreenshotOverlay()
-      if (!rect) return          // 用户取消
+  handleScreenshotCommand(command) {
+    if (command === 'hide') {
+      // 点击了"隐藏窗口截图" -> 传入 true
+      this.toggleScreenshot(true);
+    } else if (command === 'no-hide') {
+      // 点击了"当前窗口截图" -> 传入 false
+      this.toggleScreenshot(false);
+    }
+  },
 
-      // 2. 主进程裁剪
+  // 修改：保留原有的截图逻辑，参数 hideMainWindow 决定是否隐藏
+  async toggleScreenshot(hideMainWindow = true) {
+    try {
+      // 1. 调用遮罩，并传入是否隐藏的参数
+      const rect = await window.electronAPI.showScreenshotOverlay(hideMainWindow)
+      
+      if (!rect) return // 用户取消
+
+      // 2. 裁剪
       const buf = await window.electronAPI.cropDesktop({ rect })
 
-      // 3. 组装成 File 塞进 images
+      // 3. 保存
       const blob = new Blob([buf], { type: 'image/png' })
       const file = new File([blob], `desktop_${Date.now()}.png`, { type: 'image/png' })
       this.images.push({ file, name: file.name, path: '' })
     } catch (e) {
       console.error(e)
     } finally {
-      // 重新显示主窗口
+      // 4. 清理并恢复窗口
       await window.electronAPI.cancelScreenshotOverlay();
+      // 只有当之前隐藏了窗口，才需要在这里强制显示。
+      // 这里直接调用 show 是安全的，因为如果窗口本来是显示的，这个调用不会有副作用
       window.electronAPI.windowAction('show');
     }
   },
