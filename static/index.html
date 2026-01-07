@@ -12785,7 +12785,7 @@ function updateElement(el, rawMarkdown, formatFn) {
               
               <div 
                   class="browser-toggle-handle"
-                  @click="showBrowserChat = !showBrowserChat"
+                  @click="showBrowserChat = !showBrowserChat;autoSaveSettings();"
               >
                   <!-- 图标逻辑：面板打开时显示向右箭头(收起)，关闭时显示向左箭头(展开) -->
                   <i :class="showBrowserChat ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left'"></i>

@@ -1254,6 +1254,7 @@ let vue_methods = {
           this.knowledgeBases = data.data.knowledgeBases || this.knowledgeBases;
           this.modelProviders = data.data.modelProviders || this.modelProviders;
           this.systemSettings = data.data.systemSettings || this.systemSettings;
+          this.showBrowserChat = data.data.showBrowserChat || this.showBrowserChat;
           if (data.data.largeMoreButtonDict) {
             this.largeMoreButtonDict = this.largeMoreButtonDict.map(existingButton => {
               const newButton = data.data.largeMoreButtonDict.find(button => button.name === existingButton.name);
@@ -2219,6 +2220,7 @@ let vue_methods = {
           comfyuiAPIkey: this.comfyuiAPIkey,
           workflows: this.workflows,
           custom_http: this.customHttpTools,
+          showBrowserChat: this.showBrowserChat,
         };
         const correlationId = uuid.v4();
         // 发送保存请求
