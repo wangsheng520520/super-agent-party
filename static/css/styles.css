@@ -6503,3 +6503,196 @@ hr.footnotes-sep {
 [data-theme="midnight"] .browser-toggle-handle--left {
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
 }
+
+/* --- 收藏夹功能样式 --- */
+
+/* 1. 允许标题被点击 */
+.ios-title {
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s;
+    position: relative;
+}
+
+.ios-title:hover {
+    opacity: 0.8;
+}
+
+.ios-title:active {
+    transform: scale(0.98);
+}
+
+/* 提示用户可以点击的小标识 (可选) */
+.ios-title::after {
+    content: 'Click to toggle favorites';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.ios-title:hover::after {
+    opacity: 0.6;
+}
+
+/* 2. 收藏夹容器 */
+.ios-favorites-wrapper {
+    width: 100%;
+    max-width: 680px;
+    margin-top: 40px;
+    /* 动画过渡容器高度和透明度 */
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    overflow: hidden;
+    opacity: 1;
+    max-height: 500px; /* 足够展示两行图标的高度 */
+}
+
+.ios-favorites-wrapper.hidden {
+    opacity: 0;
+    max-height: 0;
+    margin-top: 0;
+}
+
+/* 3. 图标网格 */
+.ios-favorites-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 16px 12px;
+    padding: 10px;
+}
+
+/* 4. 单个收藏项 */
+.fav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.fav-item:hover .fav-icon-box {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    background: var(--el-bg-color);
+}
+
+.ios-favorites-wrapper {
+    width: 100%;
+    max-width: 720px;
+    margin-top: 30px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 1;
+    transform: translateY(0);
+}
+.ios-favorites-wrapper.hidden {
+    opacity: 0;
+    transform: translateY(20px);
+    pointer-events: none;
+    max-height: 0;
+    margin-top: 0;
+}
+
+/* 3. 网格布局：固定宽度，防止变形 */
+.ios-favorites-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 25px; /* 间距拉开，防止视觉拥挤 */
+    padding: 20px;
+}
+
+/* 4. 单个图标项：去掉背景框，只留纯净图标 */
+.fav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 70px; /* 固定宽度 */
+    text-decoration: none;
+    position: relative;
+}
+
+/* 图标容器 */
+.fav-icon-box {
+    width: 54px;
+    height: 54px;
+    background: var(--el-primary-color) !important; /* 强制纯白，因为99%的网页图标是为白色背景设计的 */
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1); /* 极细阴影 */
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+/* 图片：铺满盒子但留一点内边距 */
+.fav-icon-box img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
+    image-rendering: -webkit-optimize-contrast; /* 锐化渲染 */
+}
+
+.fav-item:hover .fav-icon-box {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    border-color: var(--el-color-primary);
+}
+
+/* 标题文字 */
+.fav-title {
+    font-size: 12px;
+    color: var(--el-text-color-regular);
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
+    transition: color 0.2s;
+}
+
+.fav-item:hover .fav-title {
+    color: var(--el-text-color-primary);
+}
+
+/* 删除按钮 (悬停显示) */
+.fav-remove-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+    background: var(--el-text-color-secondary);
+    color: #fff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    opacity: 0;
+    transition: all 0.2s;
+    z-index: 10;
+}
+.fav-remove-btn:hover {
+    background: var(--el-color-danger);
+    transform: scale(1.1);
+}
+
+.fav-item:hover .fav-remove-btn {
+    opacity: 1;
+}
+
+/* 地址栏收藏按钮激活状态 */
+.ib-btn.is-favorite {
+    color: #f5a623; /* 星星黄色 */
+}

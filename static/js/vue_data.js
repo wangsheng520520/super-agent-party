@@ -1845,4 +1845,6 @@ main();`,
     downloads: [], // 存储所有下载记录 { id, filename, totalBytes, receivedBytes, state, path, progress }
     dropdownTimer: null, 
     showBrowserChat: false,
+    favorites: [],       // 存储收藏项列表
+    showFavorites: true, // 控制欢迎页收藏夹的显示/隐藏状态
 };

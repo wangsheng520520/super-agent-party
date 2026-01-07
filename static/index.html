@@ -238,6 +238,16 @@ function updateElement(el, rawMarkdown, formatFn) {
                 <i class="fa-solid fa-plus"></i>
             </button>
             
+            <button 
+                class="ib-btn" 
+                :class="{ 'is-favorite': isCurrentTabFavorite }"
+                @click="toggleFavorite(currentTab)" 
+                :title="isCurrentTabFavorite ? t('removeFavorite') : t('addFavorite')"
+                :disabled="!currentTab?.url"
+            >
+                <i :class="isCurrentTabFavorite ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
+            </button>
+
             <!-- 下载管理按钮 & 下拉框 -->
             <div 
                 class="download-manager-wrapper"
@@ -12820,7 +12830,9 @@ function updateElement(el, rawMarkdown, formatFn) {
               <div class="browser-welcome-page" v-if="currentTab && !currentTab.url">
                   <div class="ios-welcome-container">
                       
-                      <h1 class="ios-title">Welcome to Party</h1>
+                      <h1 class="ios-title" @click="showFavorites = !showFavorites" title="Click to toggle favorites">
+                          Welcome to Party
+                      </h1>
                       
                       <!-- 居中大搜索框 -->
                       <div class="ios-search-wrapper" :class="{ 'focused': isSearchFocused }">
@@ -12861,6 +12873,40 @@ function updateElement(el, rawMarkdown, formatFn) {
                           <button class="ios-search-btn" @click="handleWelcomeSearch">
                               <i class="fa-solid fa-arrow-right"></i>
                           </button>
+                      </div>
+
+                      <div class="ios-favorites-wrapper" :class="{ 'hidden': !showFavorites }">
+                          <div class="ios-favorites-grid">
+                              <!-- 循环渲染收藏项 -->
+                              <div 
+                                  v-for="fav in favorites" 
+                                  :key="fav.url" 
+                                  class="fav-item"
+                                  @click="loadUrlInCurrentTab(fav.url)"
+                              >
+                                  <div class="fav-icon-box">
+                                      <!-- 如果有 favicon 显示图片，否则显示默认图标 -->
+                                      <img v-if="fav.favicon" :src="fav.favicon" :alt="fav.title" />
+                                      <i v-else class="fa-regular fa-compass"></i>
+                                      
+                                      <!-- 删除按钮 (阻止冒泡以免触发跳转) -->
+                                      <span 
+                                          class="fav-remove-btn" 
+                                          @click.stop="removeFavorite(fav.url)"
+                                          :title="t('remove')"
+                                      >
+                                          <i class="fa-solid fa-xmark"></i>
+                                      </span>
+                                  </div>
+                                  <span class="fav-title">{{ fav.title || 'No Title' }}</span>
+                              </div>
+
+                              <!-- 这是一个空的占位，如果收藏夹为空时显示提示 -->
+                              <div v-if="favorites.length === 0" class="empty-favorites-tip" style="grid-column: 1 / -1; text-align: center; color: var(--el-text-color-secondary); padding: 20px;">
+                                  <i class="fa-regular fa-star" style="margin-bottom: 8px;"></i>
+                                  <p style="font-size: 12px;">{{t('addFavoritesToSeeThemHere')}}</p>
+                              </div>
+                          </div>
                       </div>
 
                   </div>

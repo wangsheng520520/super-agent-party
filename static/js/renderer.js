@@ -857,6 +857,7 @@ const app = Vue.createApp({
             this.showEngineDropdown = false;
         }
     });
+    this.loadFavorites();
   },
   beforeUnmount() {
     this.stopEdgeScroll();
@@ -992,6 +993,13 @@ const app = Vue.createApp({
     },
   },
   computed: {
+    isCurrentTabFavorite() {
+        // 如果没有当前标签或当前标签没有URL（比如是新标签页），返回 false
+        if (!this.currentTab || !this.currentTab.url) return false;
+        // 检查当前 URL 是否存在于收藏列表中
+        return this.favorites.some(f => f.url === this.currentTab.url);
+    },
+
     sidePanelText() {
       if (this.messages.length === 0) {
         return '';
