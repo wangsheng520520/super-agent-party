@@ -12371,15 +12371,45 @@ async togglePlugin(plugin) {
         if (!wv) return "Error: No active webview";
 
         const script = `
-        (function() {
+        (async function() {
             const el = document.querySelector('[data-ai-id="${uid}"]');
             if (!el) return "Element not found: ${uid}";
             
-            el.scrollIntoView({behavior: "smooth", block: "center", inline: "center"}); // 改为 smooth 更像人
+            // 1. 滚动到可见 (平滑滚动更像人)
+            el.scrollIntoView({behavior: "smooth", block: "center", inline: "center"});
             
-            const opts = { bubbles: true, cancelable: true, view: window, buttons: 1 };
+            // 等待一小会儿让滚动完成
+            await new Promise(r => setTimeout(r, 200));
+
+            // 2. 计算随机坐标 (核心改进)
+            const rect = el.getBoundingClientRect();
+            // 不点边缘，只在中心 80% 区域内随机
+            // Math.random() - 0.5 生成 -0.5 到 0.5 的数
+            const randomX = (Math.random() - 0.5) * (rect.width * 0.8); 
+            const randomY = (Math.random() - 0.5) * (rect.height * 0.8);
+            
+            // 加上 rect.left 等于视口绝对坐标，加上 rect.width/2 等于中心点
+            // clientX/Y 是相对于视口的
+            const clientX = rect.left + (rect.width / 2) + randomX;
+            const clientY = rect.top + (rect.height / 2) + randomY;
+
+            // 3. 构造事件对象 (带真实坐标)
+            const opts = { 
+                bubbles: true, 
+                cancelable: true, 
+                view: window, 
+                buttons: 1,
+                clientX: clientX,
+                clientY: clientY,
+                screenX: clientX + window.screenX, // 模拟屏幕坐标
+                screenY: clientY + window.screenY
+            };
+
+            // 4. 触发完整的事件链
             el.dispatchEvent(new MouseEvent('mouseover', opts));
             el.dispatchEvent(new MouseEvent('mousedown', opts));
+            // 鼠标按下和抬起之间极短的停顿
+            await new Promise(r => setTimeout(r, Math.floor(Math.random() * 50) + 10)); 
             el.dispatchEvent(new MouseEvent('mouseup', opts));
             el.dispatchEvent(new MouseEvent('click', opts));
             
@@ -12390,12 +12420,14 @@ async togglePlugin(plugin) {
         })()
         `;
         
-        const result = await wv.executeJavaScript(script);
-        
-        // ★ 操作后等待
-        await this._humanDelay();
-        
-        return result;
+        try {
+            const result = await wv.executeJavaScript(script);
+            // 操作后的大延迟（模拟思考下一步）
+            await this._humanDelay();
+            return result;
+        } catch (e) {
+            return "Click Error: " + e.message;
+        }
     },
 
     // --- 3. 输入 (增加延迟) ---
@@ -12403,35 +12435,74 @@ async togglePlugin(plugin) {
         const wv = this.getWebview();
         if (!wv) return "Error: No active webview";
 
+        // 注意：这里需要把 value 传给 JS，使用 JSON.stringify 确保安全
         const script = `
-        (function() {
+        (async function() {
             const el = document.querySelector('[data-ai-id="${uid}"]');
             if (!el) return "Element not found: ${uid}";
             
             el.focus();
             
+            const text = ${JSON.stringify(value)};
+            
+            // 获取原生 Setter (解决 React/Vue 无法监听 js 赋值的问题)
             const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
-            if (nativeInputValueSetter && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
-                nativeInputValueSetter.call(el, ${JSON.stringify(value)});
+            
+            // 清空现有内容 (如果需要追加模式，可以去掉这行)
+            if (nativeInputValueSetter) {
+                nativeInputValueSetter.call(el, '');
             } else {
-                el.value = ${JSON.stringify(value)};
+                el.value = '';
+            }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // ★ 核心：逐字输入循环
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                
+                // 1. 模拟按键按下 (keydown)
+                el.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));
+                el.dispatchEvent(new KeyboardEvent('keypress', { key: char, bubbles: true }));
+
+                // 2. 更新值 (模拟输入进去的效果)
+                const currentVal = el.value + char;
+                if (nativeInputValueSetter && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+                    nativeInputValueSetter.call(el, currentVal);
+                } else {
+                    el.value = currentVal;
+                }
+
+                // 3. 触发 input 事件 (让框架知道值变了)
+                el.dispatchEvent(new InputEvent('input', { data: char, inputType: 'insertText', bubbles: true }));
+                
+                // 4. 模拟按键抬起 (keyup)
+                el.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true }));
+
+                // ★ 5. 随机打字延迟 (30ms - 150ms)
+                // 模拟人打字忽快忽慢
+                const delay = Math.floor(Math.random() * 120) + 30;
+                await new Promise(r => setTimeout(r, delay));
             }
 
-            el.dispatchEvent(new Event('input', { bubbles: true }));
+            // 完成后的 change 事件
             el.dispatchEvent(new Event('change', { bubbles: true }));
-            el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+            
+            // 稍微停顿后失焦
+            await new Promise(r => setTimeout(r, 200));
             el.blur();
 
             return "Filled " + "${uid}";
         })()
         `;
         
-        const result = await wv.executeJavaScript(script);
-        
-        // ★ 操作后等待
-        await this._humanDelay();
-        
-        return result;
+        try {
+            const result = await wv.executeJavaScript(script);
+            // 操作后的大延迟
+            await this._humanDelay();
+            return result;
+        } catch (e) {
+            return "Fill Error: " + e.message;
+        }
     },
 
     // --- 4. 批量填表 (增加延迟) ---
