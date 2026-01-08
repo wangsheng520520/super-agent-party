@@ -1254,6 +1254,7 @@ let vue_methods = {
           this.knowledgeBases = data.data.knowledgeBases || this.knowledgeBases;
           this.modelProviders = data.data.modelProviders || this.modelProviders;
           this.systemSettings = data.data.systemSettings || this.systemSettings;
+          this.showBrowserChat = data.data.showBrowserChat || this.showBrowserChat;
           if (data.data.largeMoreButtonDict) {
             this.largeMoreButtonDict = this.largeMoreButtonDict.map(existingButton => {
               const newButton = data.data.largeMoreButtonDict.find(button => button.name === existingButton.name);
@@ -2219,6 +2220,7 @@ let vue_methods = {
           comfyuiAPIkey: this.comfyuiAPIkey,
           workflows: this.workflows,
           custom_http: this.customHttpTools,
+          showBrowserChat: this.showBrowserChat,
         };
         const correlationId = uuid.v4();
         // 发送保存请求
@@ -9350,24 +9352,38 @@ stopTTSActivities() {
     // 本地状态同步
     this.isFixedWindow = next;
   },
-  async toggleScreenshot () {
-    try {
-      // 1. 调出遮罩并等待选区
-      const rect = await window.electronAPI.showScreenshotOverlay()
-      if (!rect) return          // 用户取消
+  handleScreenshotCommand(command) {
+    if (command === 'hide') {
+      // 点击了"隐藏窗口截图" -> 传入 true
+      this.toggleScreenshot(true);
+    } else if (command === 'no-hide') {
+      // 点击了"当前窗口截图" -> 传入 false
+      this.toggleScreenshot(false);
+    }
+  },
 
-      // 2. 主进程裁剪
+  // 修改：保留原有的截图逻辑，参数 hideMainWindow 决定是否隐藏
+  async toggleScreenshot(hideMainWindow = true) {
+    try {
+      // 1. 调用遮罩，并传入是否隐藏的参数
+      const rect = await window.electronAPI.showScreenshotOverlay(hideMainWindow)
+      
+      if (!rect) return // 用户取消
+
+      // 2. 裁剪
       const buf = await window.electronAPI.cropDesktop({ rect })
 
-      // 3. 组装成 File 塞进 images
+      // 3. 保存
       const blob = new Blob([buf], { type: 'image/png' })
       const file = new File([blob], `desktop_${Date.now()}.png`, { type: 'image/png' })
       this.images.push({ file, name: file.name, path: '' })
     } catch (e) {
       console.error(e)
     } finally {
-      // 重新显示主窗口
+      // 4. 清理并恢复窗口
       await window.electronAPI.cancelScreenshotOverlay();
+      // 只有当之前隐藏了窗口，才需要在这里强制显示。
+      // 这里直接调用 show 是安全的，因为如果窗口本来是显示的，这个调用不会有副作用
       window.electronAPI.windowAction('show');
     }
   },
@@ -12753,4 +12769,101 @@ async togglePlugin(plugin) {
             return "JS Execution Error: " + e.message;
         }
     },
+    getFaviconUrl(tab) {
+      // 1. 浏览器已经给的就直接用
+      if (tab.favicon) return tab.favicon;
+
+      // 2. 用 Chrome 官方提供的“小彩蛋”API，0 成本
+      //    注意：这个 API 不需要额外权限，也不会触发网络请求，只是读缓存
+      if (chrome && chrome.tabs && typeof chrome.tabs.get === 'function') {
+        // 同步读缓存，拿不到也不报错
+        try {
+          const url = new URL(tab.url);
+          return `chrome://favicon/size/16@2x/${url.origin}`;
+        } catch (_) {}
+      }
+
+      // 3. 兜底：拼一个最可能的地址
+      try {
+        const u = new URL(tab.url);
+        return `${u.origin}/favicon.ico`;
+      } catch (_) {}
+
+      // 4. 实在没有就空字符串
+      return '';
+    },
+
+    // 切换当前标签页的收藏状态
+    toggleFavorite(tab) {
+        if (!tab || !tab.url) return;
+
+        const index = this.favorites.findIndex(f => f.url === tab.url);
+        if (index !== -1) {
+            // 已存在 -> 移除
+            this.favorites.splice(index, 1);
+            showNotification(this.t('favoriteRemoved') || 'Favorite removed', 'info');
+        } else {
+            // 不存在 -> 添加
+            this.favorites.push({
+                title: tab.title || 'New Tab',
+                url: tab.url,
+                favicon: this.getFaviconUrl(tab)
+            });
+            showNotification(this.t('favoriteAdded') || 'Favorite added', 'success');
+        }
+        this.saveFavorites();
+    },
+
+    // 从网格中移除特定收藏
+    removeFavorite(url) {
+        const index = this.favorites.findIndex(f => f.url === url);
+        if (index !== -1) {
+            this.favorites.splice(index, 1);
+            this.saveFavorites();
+        }
+    },
+
+    // 点击收藏图标时，在当前标签页加载 URL
+    loadUrlInCurrentTab(url) {
+        if (this.currentTab) {
+            // 更新当前标签的 URL
+            this.currentTab.url = url;
+            // 更新地址栏输入框显示
+            this.urlInput = url; 
+            // 触发加载状态 (如果您的 webview逻辑依赖这个)
+            this.currentTab.isLoading = true;
+        } else {
+            // 如果没有当前标签，创建一个新的
+            this.addNewTab(url);
+        }
+    },
+
+    // 持久化：保存收藏到本地存储
+    saveFavorites() {
+        try {
+            localStorage.setItem('browser_favorites', JSON.stringify(this.favorites));
+            // 保存显示状态配置
+            localStorage.setItem('browser_show_favorites', JSON.stringify(this.showFavorites));
+        } catch (e) {
+            console.error('Failed to save favorites:', e);
+        }
+    },
+
+    // 持久化：从本地存储加载
+    loadFavorites() {
+        try {
+            const storedFavs = localStorage.getItem('browser_favorites');
+            if (storedFavs) {
+                this.favorites = JSON.parse(storedFavs);
+            }
+            
+            const storedShow = localStorage.getItem('browser_show_favorites');
+            if (storedShow !== null) {
+                this.showFavorites = JSON.parse(storedShow);
+            }
+        } catch (e) {
+            console.error('Failed to load favorites:', e);
+        }
+    },
+
 }

@@ -238,6 +238,16 @@ function updateElement(el, rawMarkdown, formatFn) {
                 <i class="fa-solid fa-plus"></i>
             </button>
             
+            <button 
+                class="ib-btn" 
+                :class="{ 'is-favorite': isCurrentTabFavorite }"
+                @click="toggleFavorite(currentTab)" 
+                :title="isCurrentTabFavorite ? t('removeFavorite') : t('addFavorite')"
+                :disabled="!currentTab?.url"
+            >
+                <i :class="isCurrentTabFavorite ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
+            </button>
+
             <!-- 下载管理按钮 & 下拉框 -->
             <div 
                 class="download-manager-wrapper"
@@ -1045,7 +1055,7 @@ function updateElement(el, rawMarkdown, formatFn) {
 
                 <el-tooltip :content="t('screenshot')" placement="top">
                   <el-button
-                    @click="toggleScreenshot"
+                    @click="toggleScreenshot(false)"
                     class="icon-btn vision-btn"
                     type="default"
                     v-if="MoreButtonDict.find(b => b.name === 'screenshotButton')?.enabled||isCapsuleMode"
@@ -12785,7 +12795,7 @@ function updateElement(el, rawMarkdown, formatFn) {
               
               <div 
                   class="browser-toggle-handle"
-                  @click="showBrowserChat = !showBrowserChat"
+                  @click="showBrowserChat = !showBrowserChat;autoSaveSettings();"
               >
                   <!-- 图标逻辑：面板打开时显示向右箭头(收起)，关闭时显示向左箭头(展开) -->
                   <i :class="showBrowserChat ? 'fa-solid fa-chevron-right' : 'fa-solid fa-chevron-left'"></i>
@@ -12820,28 +12830,54 @@ function updateElement(el, rawMarkdown, formatFn) {
               <div class="browser-welcome-page" v-if="currentTab && !currentTab.url">
                   <div class="ios-welcome-container">
                       
-                      <h1 class="ios-title">Welcome to Party</h1>
+                      <h1 class="ios-title" @click="showFavorites = !showFavorites" title="Click to toggle favorites">
+                          Welcome to Party
+                      </h1>
                       
                       <!-- 居中大搜索框 -->
                       <div class="ios-search-wrapper" :class="{ 'focused': isSearchFocused }">
                           <!-- 引擎切换器 -->
                           <div class="engine-selector" 
-                            @mouseenter="handleSelectorEnter" 
-                            @mouseleave="handleSelectorLeave">
+                              @mouseenter="handleSelectorEnter" 
+                              @mouseleave="handleSelectorLeave">
                               
                               <div class="current-engine">
-                                  <i class="fa-brands fa-microsoft" v-if="searchEngine === 'bing'"></i>
-                                  <i class="fa-brands fa-google" v-if="searchEngine === 'google'"></i>
+                                  <!-- 动态显示当前引擎的高清 Logo 图片 -->
+                                  <img 
+                                      v-if="searchEngine === 'bing'" 
+                                      src="./source/providers/bing.png" 
+                                      class="engine-logo-img" 
+                                      alt="Bing"
+                                  >
+                                  <img 
+                                      v-if="searchEngine === 'google'" 
+                                      src="./source/providers/google.png" 
+                                      class="engine-logo-img" 
+                                      alt="Google"
+                                  >
+                                  <!-- 下拉小箭头保留 -->
                                   <i class="fa-solid fa-caret-down"></i>
                               </div>
                               
-                              <!-- 下拉菜单 -->
+                              <!-- 下拉菜单：根据 showEngineDropdown 显示 -->
                               <div class="engine-dropdown" v-show="showEngineDropdown">
-                                  <div class="engine-item" @click="setSearchEngine('bing')" :class="{active: searchEngine === 'bing'}">
-                                      <i class="fa-brands fa-microsoft"></i> Bing
+                                  <div class="engine-item" 
+                                      @click="setSearchEngine('bing')" 
+                                      :class="{active: searchEngine === 'bing'}">
+                                  <img 
+                                      src="./source/providers/bing.png" 
+                                      class="engine-logo-img" 
+                                      alt="Bing"
+                                  > Bing
                                   </div>
-                                  <div class="engine-item" @click="setSearchEngine('google')" :class="{active: searchEngine === 'google'}">
-                                      <i class="fa-brands fa-google"></i> Google
+                                  <div class="engine-item" 
+                                      @click="setSearchEngine('google')" 
+                                      :class="{active: searchEngine === 'google'}">
+                                  <img 
+                                      src="./source/providers/google.png" 
+                                      class="engine-logo-img" 
+                                      alt="Google"
+                                  > Google
                                   </div>
                               </div>
                           </div>
@@ -12861,6 +12897,40 @@ function updateElement(el, rawMarkdown, formatFn) {
                           <button class="ios-search-btn" @click="handleWelcomeSearch">
                               <i class="fa-solid fa-arrow-right"></i>
                           </button>
+                      </div>
+
+                      <div class="ios-favorites-wrapper" :class="{ 'hidden': !showFavorites }">
+                          <div class="ios-favorites-grid">
+                              <!-- 循环渲染收藏项 -->
+                              <div 
+                                  v-for="fav in favorites" 
+                                  :key="fav.url" 
+                                  class="fav-item"
+                                  @click="loadUrlInCurrentTab(fav.url)"
+                              >
+                                  <div class="fav-icon-box">
+                                      <!-- 如果有 favicon 显示图片，否则显示默认图标 -->
+                                      <img v-if="fav.favicon" :src="fav.favicon" :alt="fav.title" />
+                                      <i v-else class="fa-regular fa-compass"></i>
+                                      
+                                      <!-- 删除按钮 (阻止冒泡以免触发跳转) -->
+                                      <span 
+                                          class="fav-remove-btn" 
+                                          @click.stop="removeFavorite(fav.url)"
+                                          :title="t('remove')"
+                                      >
+                                          <i class="fa-solid fa-xmark"></i>
+                                      </span>
+                                  </div>
+                                  <span class="fav-title">{{ fav.title || 'No Title' }}</span>
+                              </div>
+
+                              <!-- 这是一个空的占位，如果收藏夹为空时显示提示 -->
+                              <div v-if="favorites.length === 0" class="empty-favorites-tip" style="grid-column: 1 / -1; text-align: center; color: var(--el-text-color-secondary); padding: 20px;">
+                                  <i class="fa-regular fa-star" style="margin-bottom: 8px;"></i>
+                                  <p style="font-size: 12px;">{{t('addFavoritesToSeeThemHere')}}</p>
+                              </div>
+                          </div>
                       </div>
 
                   </div>
@@ -12986,6 +13056,17 @@ function updateElement(el, rawMarkdown, formatFn) {
                           </el-button>
                         </el-tooltip>
 
+                        <el-tooltip :content="t('screenshot')" placement="top">
+                          <el-button
+                            @click="toggleScreenshot(false)"
+                            class="icon-btn vision-btn"
+                            type="default"
+                            v-if="MoreButtonDict.find(b => b.name === 'screenshotButton')?.enabled||isCapsuleMode"
+                            circle>
+                            <i class="fa-solid fa-scissors"></i>
+                          </el-button>
+                        </el-tooltip>
+
                         <el-tooltip :content="t('asr')" placement="top">
                           <el-button
                             @click="toggleASR"
@@ -13031,6 +13112,19 @@ function updateElement(el, rawMarkdown, formatFn) {
 
                     <!-- 输入框区域 -->
                     <div class="input-container" v-if="!isCapsuleMode">
+                      <!-- 紧凑型文件列表 -->
+                      <div class="compact-file-list" v-if="allItems.length">
+                        <div v-for="(item, index) in allItems" :key="index" class="compact-file-item">
+                          <span class="file-name">@{{ item.name }}</span>
+                          <el-button
+                            @click.stop="removeItem(index, item.type)"
+                            class="delete-icon"
+                            circle
+                          >
+                            <i class="fa-solid fa-trash"></i>
+                          </el-button>
+                        </div>
+                      </div>
                       <el-input
                           v-model="userInput"
                           type="textarea"

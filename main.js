@@ -996,32 +996,38 @@ app.whenReady().then(async () => {
       return png.buffer.slice(png.byteOffset, png.byteOffset + png.byteLength)
     })
 
-    ipcMain.handle('show-screenshot-overlay', async () => {
-      // 1. 隐藏主窗口
-      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
+    ipcMain.handle('show-screenshot-overlay', async (_, { hideWindow = true } = {}) => {
+      // 1. 根据 hideWindow 参数决定是否隐藏主窗口
+      if (hideWindow) {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
+      }
 
       // 2. 创建全屏无框透明窗口
       const { width, height } = screen.getPrimaryDisplay().bounds
       shotOverlay = new BrowserWindow({
         x: 0, y: 0, width, height,
-        frame: false, transparent: true, alwaysOnTop: true,
-        skipTaskbar: true, resizable: false, movable: false,
+        frame: false, 
+        transparent: true, 
+        alwaysOnTop: true,
+        skipTaskbar: true, 
+        resizable: false, 
+        movable: false,
         enableLargerThanScreen: true,
         webPreferences: {
           contextIsolation: true,
           preload: path.join(__dirname, 'static/js/shotPreload.js')
         }
       })
+      
       shotOverlay.setIgnoreMouseEvents(false)
       shotOverlay.loadFile(path.join(__dirname, 'static/shotOverlay.html'))
       shotOverlay.setVisibleOnAllWorkspaces(true)
 
       return new Promise((resolve) => {
-        // 等待渲染进程把选区传回来
         ipcMain.once('screenshot-selected', (e, rect) => {
           shotOverlay.close()
           shotOverlay = null
-          resolve(rect)   // {x,y,width,height}
+          resolve(rect)
         })
       })
     })
