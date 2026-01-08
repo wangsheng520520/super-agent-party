@@ -11838,8 +11838,20 @@ async togglePlugin(plugin) {
     // 欢迎页搜索回车
     handleWelcomeSearch() {
         const query = this.welcomeSearchQuery.trim();
-        this.welcomeSearchQuery = ''; // 清空
+        this.welcomeSearchQuery = ''; // 清空输入框
         if (!query) return;
+
+        // --- 新增逻辑：URL 检测与直接跳转 ---
+        if (this.isUrl(query)) {
+            let targetUrl = query;
+            // 如果没有以 http:// 或 https:// 开头，默认补全 https://
+            if (!/^https?:\/\//i.test(targetUrl)) {
+                targetUrl = 'https://' + targetUrl;
+            }
+            this.navigateTo(targetUrl);
+            return;
+        }
+        // ------------------------------------
 
         let searchUrl = '';
         if (this.searchEngine === 'google') {
@@ -11847,16 +11859,43 @@ async togglePlugin(plugin) {
         } else if (this.searchEngine === 'bing') {
             searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
         } else {
-          if (this.chromeMCPSettings.enabled == false || this.chromeMCPSettings.type != 'internal'){
-            showNotification(this.t('notEnabledInternalBrowserBontrol'),'error')
-          }
-          this.showBrowserChat =true;
-          this.userInput=query;
-          this.sendMessage();
-          return;
+            if (this.chromeMCPSettings.enabled == false || this.chromeMCPSettings.type != 'internal') {
+                showNotification(this.t('notEnabledInternalBrowserBontrol'), 'error')
+            }
+            this.showBrowserChat = true;
+            this.userInput = query;
+            this.sendMessage();
+            return;
         }
-        
+
         this.navigateTo(searchUrl);
+    },
+
+    /**
+     * 辅助函数：判断字符串是否为 URL
+     * 规则：
+     * 1. 以 http/https 开头
+     * 2. 或者符合 域名.后缀 (如 google.com)
+     * 3. 或者 localhost
+     * 4. 或者 IP 地址
+     * 5. 且不包含空格
+     */
+    isUrl(str) {
+        // 简单判断：如果包含空格，通常是搜索词（除非是编码后的URL，但用户输入通常带空格）
+        if (str.includes(' ')) return false;
+
+        // 正则解释：
+        // ^(https?:\/\/)?  -> 可选的 http:// 或 https://
+        // (
+        //   ([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}  -> 标准域名 (如 a.com, b.co.uk)
+        //   | localhost                     -> 本地 localhost
+        //   | (\d{1,3}\.){3}\d{1,3}         -> IP 地址 (如 192.168.1.1)
+        // )
+        // (:\d+)?          -> 可选端口号 (如 :8080)
+        // (\/.*)?$         -> 可选路径
+        const pattern = /^(https?:\/\/)?(([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}|localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?(\/.*)?$/i;
+        
+        return pattern.test(str);
     },
 
     // 核心导航方法
@@ -12662,23 +12701,86 @@ async togglePlugin(plugin) {
     },
 
     // --- 9. 按键 (增加延迟) ---
-    async webviewPressKey(keyCombo) {
+    async webviewPressKey(keyCombo, uid) {
         const wv = this.getWebview();
         if (!wv) return "Error: No active webview";
         wv.focus();
+
+        // 1. 获取元素坐标 (JS 只负责告诉我们它在哪)
+        const rectScript = `
+        (function() {
+            const el = document.querySelector('[data-ai-id="${uid}"]');
+            if (!el) return null;
+            
+            // 滚动到屏幕中间
+            el.scrollIntoView({behavior: "auto", block: "center", inline: "center"});
+            
+            // 获取相对于视口的精确坐标
+            const rect = el.getBoundingClientRect();
+            return {
+                x: rect.left + (rect.width / 2),
+                y: rect.top + (rect.height / 2)
+            };
+        })()
+        `;
+
         try {
+            const rect = await wv.executeJavaScript(rectScript);
+            if (!rect) return "Element not found: " + uid;
+
+            // ★ 关键修复：使用 sendInputEvent 发送真实的鼠标点击
+            // 这会强制操作系统将焦点转移到该坐标下的输入框
+            // 注意：x, y 是相对于 Webview 左上角的坐标
+            
+            // 1. 移动并按下鼠标
+            wv.sendInputEvent({ 
+                type: 'mouseDown', 
+                x: rect.x, 
+                y: rect.y, 
+                button: 'left', 
+                clickCount: 1 
+            });
+            
+            // 2. 抬起鼠标 (完成点击)
+            wv.sendInputEvent({ 
+                type: 'mouseUp', 
+                x: rect.x, 
+                y: rect.y, 
+                button: 'left', 
+                clickCount: 1 
+            });
+
+            // 等待点击生效，输入框激活光标
+            await new Promise(r => setTimeout(r, 400));
+
+            // 3. 处理按键
             const parts = keyCombo.split('+').map(k => k.trim());
-            const key = parts.pop();
+            let key = parts.pop(); 
             const modifiers = parts.map(m => m.toLowerCase());
             
+            if (key.toLowerCase() === 'enter') key = 'Enter';
+
+            // 4. 发送原生按键
+            // 模拟按下
             wv.sendInputEvent({ type: 'keyDown', keyCode: key, modifiers });
-            if (key.length === 1) wv.sendInputEvent({ type: 'char', keyCode: key, modifiers });
+            
+            // ★ 补充 char 事件：Enter 键经常需要配套一个 char code 13 (\r)
+            // 许多网页(特别是旧一点的或 React 封装的)依赖这个 char 事件来触发表单提交
+            if (key === 'Enter') {
+                wv.sendInputEvent({ type: 'char', keyCode: '\r', modifiers });
+            } else if (key.length === 1) {
+                wv.sendInputEvent({ type: 'char', keyCode: key, modifiers });
+            }
+
+            // 模拟按住停顿
+            await new Promise(r => setTimeout(r, Math.floor(Math.random() * 50) + 30));
+
+            // 模拟抬起
             wv.sendInputEvent({ type: 'keyUp', keyCode: key, modifiers });
             
-            // ★ 按键后等待
             await this._humanDelay();
             
-            return "Pressed " + keyCombo;
+            return "Pressed (Native) " + keyCombo + " on " + uid;
         } catch (e) {
             return "PressKey Error: " + e.message;
         }

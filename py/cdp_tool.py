@@ -198,9 +198,9 @@ async def hover(uid):
     """悬停"""
     return await call_vue_method('webviewHover', [uid])
 
-async def press_key(key):
+async def press_key(key,uid):
     """按键"""
-    return await call_vue_method('webviewPressKey', [key])
+    return await call_vue_method('webviewPressKey', [key, uid])
 
 # ------------------------------------------
 # Navigation Tools
@@ -409,9 +409,10 @@ all_cdp_tools = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "key": {"type": "string", "description": "The key combination to press."}
+                    "key": {"type": "string", "description": "The key combination to press."},
+                    "uid": {"type": "string", "description": "The BackendNodeId from snapshot"}
                 },
-                "required": ["key"]
+                "required": ["key","uid"]
             }
         }
     },
