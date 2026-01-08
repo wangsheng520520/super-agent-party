@@ -12788,10 +12788,8 @@ async togglePlugin(plugin) {
 
     // --- 10. 等待文本 (无延迟，这是轮询操作) ---
     async webviewWaitFor(text, timeout) {
-        // ... (代码保持不变) ...
         const wv = this.getWebview();
         if (!wv) return "Error: No active webview";
-        wv.focus();
         const script = `
         (function() {
             return new Promise((resolve) => {
@@ -12802,7 +12800,7 @@ async togglePlugin(plugin) {
                     } else if (Date.now() - start > ${timeout}) {
                         resolve("Timeout waiting for text");
                     } else {
-                        setTimeout(check, 500);
+                        setTimeout(check, 100);
                     }
                 };
                 check();
