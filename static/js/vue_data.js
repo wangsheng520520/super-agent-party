@@ -404,9 +404,7 @@ let vue_data = {
     ],
     imgHostOptions:[
       { value: 'smms', label: 'smms' },
-      { value: 'easyImage2', label: 'easyImage2' },
-      { value: 'gitee', label: 'gitee' },
-      { value: 'github', label: 'github' },
+      { value: 'easyImage2', label: 'easyImage2' }
     ],
     showRestartDialog: false,
     agents: {},
@@ -762,7 +760,7 @@ let vue_data = {
       {"name": "a2aButton", "enabled": false},
       {"name": "httpButton", "enabled": false},
       {"name": "comfyuiButton", "enabled": false},
-      {"name": "vrmButton", "enabled": false},
+      {"name": "vrmButton", "enabled": true},
       {"name": "behaviorBotton", "enabled": false}
     ],
     showVrmModelDialog: false,
@@ -1175,7 +1173,7 @@ let vue_data = {
       { id: 'interpreter', title: 'interpreter', icon: 'fa-solid fa-code'},
       { id: 'CLI', title: 'CLItool', icon: 'fa-solid fa-terminal'},
       { id: 'HA', title: 'homeAssistant', icon: 'fa-solid fa-house'},
-      { id: 'chromeMCP', title: 'browserControl', icon: 'fa-brands fa-chrome' },
+      { id: 'chromeMCP', title: 'browserControl', icon: 'fa-solid fa-compass' },
       { id: 'sql', title: 'sqlControl', icon: 'fa-solid fa-database' },
       { id: 'comfyui', title: 'ComfyUI', icon: 'fa-solid fa-palette'},
       { id: 'mcp', title: 'mcpServers', icon: 'fa-solid fa-server'},

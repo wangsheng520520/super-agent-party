@@ -2147,25 +2147,6 @@ let vue_methods = {
     },
     async autoSaveSettings() {
       return new Promise((resolve, reject) => {
-        // 同步 MoreButtonDict 的修改到对应的字典中
-        if (this.isMobile) {
-          this.smallMoreButtonDict = this.smallMoreButtonDict.map(existingButton => {
-            const currentButton = this.MoreButtonDict.find(button => button.name === existingButton.name);
-            if (currentButton) {
-              return { ...existingButton, enabled: currentButton.enabled };
-            }
-            return existingButton;
-          });
-        } else {
-          this.largeMoreButtonDict = this.largeMoreButtonDict.map(existingButton => {
-            const currentButton = this.MoreButtonDict.find(button => button.name === existingButton.name);
-            if (currentButton) {
-              return { ...existingButton, enabled: currentButton.enabled };
-            }
-            return existingButton;
-          });
-        }
-
         // 构造 payload（保持原有逻辑）
         const payload = {
           ...this.settings,
@@ -12788,10 +12769,8 @@ async togglePlugin(plugin) {
 
     // --- 10. 等待文本 (无延迟，这是轮询操作) ---
     async webviewWaitFor(text, timeout) {
-        // ... (代码保持不变) ...
         const wv = this.getWebview();
         if (!wv) return "Error: No active webview";
-        wv.focus();
         const script = `
         (function() {
             return new Promise((resolve) => {
@@ -12802,7 +12781,7 @@ async togglePlugin(plugin) {
                     } else if (Date.now() - start > ${timeout}) {
                         resolve("Timeout waiting for text");
                     } else {
-                        setTimeout(check, 500);
+                        setTimeout(check, 100);
                     }
                 };
                 check();
