@@ -345,7 +345,7 @@ const globalConfig = loadEnvVariables();
 let SESSION_CDP_PORT = 0; // 初始为0
 let IS_INTERNAL_MODE_ACTIVE = false;
 
-if (globalConfig?.chromeMCPSettings?.type === 'internal') {
+if (globalConfig?.chromeMCPSettings?.type === 'internal' && globalConfig.chromeMCPSettings?.enabled) {
   
   // ★ 修改点 1：使用端口 '0'，让系统自动分配一个绝对安全的空闲端口
   app.commandLine.appendSwitch('remote-debugging-port', '0');
@@ -749,42 +749,47 @@ ipcMain.handle('get-window-size', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   return win.getSize();
 });
-
+const CHROME_VERSION = '124.0.0.0';
+const CHROME_MAJOR = '124';
 app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
 app.commandLine.appendSwitch('enable-features', 'NetworkService,NetworkServiceInProcess');
-app.commandLine.appendSwitch('ignore-certificate-errors');
-app.commandLine.appendSwitch('disable-features', 'CrossOriginOpenerPolicy,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure');
+app.commandLine.appendSwitch('disable-features', 'CrossOriginOpenerPolicy,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,LogAds');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
 // 只有在获得锁（第一个实例）时才执行初始化
 app.whenReady().then(async () => {
   try {
 
 
-  const partySession = session.fromPartition('persist:party-browser-session');
-  
-    // 2. 拦截请求头，强制替换 UA 并移除 Electron 特征
-    // urls: ['*://*/*'] 表示拦截所有 http/https 请求
+    const partySession = session.fromPartition('persist:party-browser-session');
+
+    // 拦截请求头，进行深度伪装
     partySession.webRequest.onBeforeSendHeaders({ urls: ['*://*/*'] }, (details, callback) => {
-      
-      // 强制覆盖 User-Agent
-      details.requestHeaders['User-Agent'] = REAL_CHROME_UA;
+        const headers = details.requestHeaders;
+        
+        // 1. 强制 UA
+        headers['User-Agent'] = REAL_CHROME_UA;
 
-      // ★★★ 关键步骤：处理 Client Hints (Sec-Ch-Ua) ★★★
-      // 现代网站（Google/CF）不仅看 User-Agent，还看 Sec-Ch-Ua 头。
-      // Electron 默认会发送类似 "Electron;v=28..." 的头，这会直接暴露身份。
-      
-      // 方案 A: 直接删除这些头（简单有效，大多数网站兼容）
-      delete details.requestHeaders['Sec-Ch-Ua'];
-      delete details.requestHeaders['Sec-Ch-Ua-Mobile'];
-      delete details.requestHeaders['Sec-Ch-Ua-Platform'];
-      delete details.requestHeaders['Sec-Ch-Ua-Full-Version'];
-      delete details.requestHeaders['Sec-Ch-Ua-Full-Version-List'];
+        // 2. 伪造 Sec-Ch-Ua (Client Hints)
+        // 这是 Google 检查的重点
+        const brand = `"Chromium";v="${CHROME_MAJOR}", "Google Chrome";v="${CHROME_MAJOR}", "Not-A.Brand";v="99"`;
+        headers['Sec-Ch-Ua'] = brand;
+        headers['Sec-Ch-Ua-Mobile'] = '?0';
+        headers['Sec-Ch-Ua-Full-Version'] = `"${CHROME_VERSION}"`;
+        headers['Sec-Ch-Ua-Full-Version-List'] = brand;
+        
+        // 3. 平台伪装 (根据 process.platform 动态设置)
+        let platform = 'Windows';
+        if (process.platform === 'darwin') platform = 'macOS';
+        else if (process.platform === 'linux') platform = 'Linux';
+        headers['Sec-Ch-Ua-Platform'] = `"${platform}"`;
 
-      // 方案 B (进阶): 如果删除导致某些网站异常，你需要伪造它们（比较麻烦，通常方案A就够了）
-      // details.requestHeaders['Sec-Ch-Ua'] = '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"';
+        // 4. 删除 Electron 特征头
+        delete headers['Sec-Ch-Ua-Model']; // 桌面端通常没有 Model
+        delete headers['Electron-Major-Version'];
+        delete headers['X-Electron-App-Name'];
 
-      callback({ requestHeaders: details.requestHeaders });
+        callback({ requestHeaders: headers });
     });
-
     app.on('session-created', (sess) => {
         // console.log('发现新 Session 创建:', sess.getUserAgent()); 
         

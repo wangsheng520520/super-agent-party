@@ -1,27 +1,206 @@
+// --- START OF FILE webview-preload.js ---
+
 // static/js/webview-preload.js
-const { ipcRenderer } = require('electron');
+const { ipcRenderer, webFrame } = require('electron');
 
+const stealthScript = `
+(() => {
+    // 0. 防重复注入标记
+    const INJECT_KEY = '__stealth_injected_' + Math.random().toString(36).slice(2);
+    if (window[INJECT_KEY]) return;
+    window[INJECT_KEY] = true;
 
-const newProto = navigator.__proto__;
-delete newProto.webdriver;
-navigator.__proto__ = newProto;
+    // 1. 定义核心伪装函数
+    const spoof = (win) => {
+        // 防止对已经伪装过的窗口重复操作
+        if (!win || win.__spoofed_v2) return;
+        
+        // 标记已处理
+        try {
+            Object.defineProperty(win, '__spoofed_v2', { value: true, enumerable: false });
+        } catch(e) {}
 
-// 在文件最顶部添加
+        // --- A. 彻底抹除 navigator.webdriver (关键修复) ---
+        try {
+            // 1. 删除 navigator 实例上的 webdriver 属性
+            // Electron 可能会在实例上定义它，必须删掉，否则会被检测到“属性位置不对”
+            if (win.navigator.hasOwnProperty('webdriver')) {
+                delete win.navigator.webdriver;
+            }
+
+            // 2. 获取 Navigator 原型链
+            const navProto = win.Navigator.prototype;
+
+            // 3. 删除原型链上可能存在的原生 getter
+            delete navProto.webdriver;
+
+            // 4. 在原型链上重新定义 webdriver，使其返回 false
+            // 这样 Object.getPrototypeOf(navigator).webdriver === false (符合原生)
+            // 而 navigator.hasOwnProperty('webdriver') === false (符合原生)
+            Object.defineProperty(navProto, 'webdriver', {
+                get: () => false, // 返回 false 比 undefined 更像原生非自动化环境
+                enumerable: true,
+                configurable: true
+            });
+        } catch (e) { console.error('Spoof webdriver failed', e); }
+
+        // --- B. 伪造 window.chrome (关键修复) ---
+        try {
+            // 只有当主窗口有 chrome 或者为了通过检测必须有时才添加
+            // Headless Chrome 检测通常看 iframe 里有没有 chrome
+            if (!win.chrome) {
+                const makeFake = (name) => {
+                    const Fake = function() {};
+                    Object.defineProperty(Fake, 'name', { value: name });
+                    const inst = new Fake();
+                    // 某些检测会检查 constructor.name
+                    Object.defineProperty(inst.constructor, 'name', { value: name });
+                    return inst;
+                };
+                
+                const mock = {
+                    app: makeFake('App'),
+                    runtime: makeFake('Runtime'),
+                    csi: () => {},
+                    loadTimes: () => {}
+                };
+                
+                mock.app.isInstalled = false;
+                mock.app.InstallState = { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' };
+                mock.app.RunningState = { CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' };
+                
+                mock.runtime.OnInstalledReason = { CHROME_UPDATE: 'chrome_update', INSTALL: 'install', SHARED_MODULE_UPDATE: 'shared_module_update', UPDATE: 'update' };
+                mock.runtime.connect = () => {};
+                mock.runtime.sendMessage = () => {};
+                mock.runtime.id = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; // 随便给个 ID
+
+                Object.defineProperty(win, 'chrome', { value: mock, writable: true, configurable: true });
+            }
+        } catch (e) { console.error('Spoof chrome failed', e); }
+
+        // --- C. 伪造 Plugins (SannySoft 检查点) ---
+        try {
+            if (!win.navigator.plugins || win.navigator.plugins.length === 0) {
+                 const pdfDesc = {
+                     name: 'Chrome PDF Viewer',
+                     filename: 'internal-pdf-viewer',
+                     description: 'Portable Document Format'
+                 };
+                 
+                 const makePlugin = () => {
+                     const p = {}; 
+                     p.name = pdfDesc.name;
+                     p.filename = pdfDesc.filename;
+                     p.description = pdfDesc.description;
+                     p.length = 1;
+                     return p;
+                 };
+                 
+                 const pdfPlugin = makePlugin();
+                 const plugins = [pdfPlugin, pdfPlugin, pdfPlugin, pdfPlugin, pdfPlugin];
+                 
+                 // 模拟 PluginArray 行为
+                 plugins.item = function(i) { return this[i]; };
+                 plugins.namedItem = function(name) { return this.find(p => p.name === name) || null; };
+                 plugins.refresh = () => {};
+
+                 Object.defineProperty(win.navigator, 'plugins', {
+                     get: () => plugins,
+                     enumerable: true,
+                     configurable: true
+                 });
+                 
+                 const mime = { type: 'application/pdf', suffixes: 'pdf', enabledPlugin: pdfPlugin };
+                 const mimes = [mime];
+                 mimes.item = function(i) { return this[i]; };
+                 mimes.namedItem = function(name) { return this.find(m => m.type === name) || null; };
+                 
+                 Object.defineProperty(win.navigator, 'mimeTypes', {
+                     get: () => mimes,
+                     enumerable: true,
+                     configurable: true
+                 });
+            }
+        } catch (e) {}
+
+        // --- D. 修正 UserAgent (一致性检查) ---
+        // Iframe 可能会回退到默认 UA，导致 HEADCHR_IFRAME 里的 UA 检查失败
+        try {
+            if (win.navigator.userAgent !== window.navigator.userAgent) {
+                const userAgent = window.navigator.userAgent;
+                Object.defineProperty(win.navigator, 'userAgent', {
+                    get: () => userAgent,
+                    configurable: true
+                });
+            }
+        } catch (e) {}
+    };
+
+    // 2. 立即把主窗口洗白
+    spoof(window);
+
+    // 3. ★★★ 解决 HEADCHR_IFRAME 的核武器 ★★★
+    try {
+        const iframeProto = window.HTMLIFrameElement.prototype;
+        const rawContentWindowGetter = Object.getOwnPropertyDescriptor(iframeProto, 'contentWindow').get;
+
+        Object.defineProperty(iframeProto, 'contentWindow', {
+            get: function() {
+                const win = rawContentWindowGetter.apply(this);
+                // 只要一获取，立马伪装
+                if (win) {
+                    spoof(win);
+                }
+                return win;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        
+        // 同样处理 contentDocument，防止通过 doc.defaultView 获取 window
+        const rawContentDocumentGetter = Object.getOwnPropertyDescriptor(iframeProto, 'contentDocument').get;
+        Object.defineProperty(iframeProto, 'contentDocument', {
+            get: function() {
+                const doc = rawContentDocumentGetter.apply(this);
+                if (doc && doc.defaultView) {
+                    spoof(doc.defaultView);
+                }
+                return doc;
+            },
+            enumerable: true,
+            configurable: true
+        });
+
+    } catch(e) { 
+        console.error('Failed to hook iframe prototype', e); 
+    }
+
+    // 4. 劫持 createElement (辅助防御)
+    // 有些脚本创建 iframe 后不插入 DOM 直接操作，这时候 contentWindow 可能是 null，
+    // 但一旦插入 DOM，上面的 contentWindow getter 就会生效。
+    // 为了保险，我们还是监控 appendChild
+    const rawAppend = window.Element.prototype.appendChild;
+    window.Element.prototype.appendChild = function(node) {
+        const res = rawAppend.apply(this, arguments);
+        if (node && (node.tagName === 'IFRAME' || node.tagName === 'FRAME')) {
+            try {
+                if (node.contentWindow) spoof(node.contentWindow);
+                if (node.contentDocument && node.contentDocument.defaultView) spoof(node.contentDocument.defaultView);
+            } catch(e) {}
+        }
+        return res;
+    };
+
+})();
+`;
+
+// -----------------------------------------------------------------------
+// 立即注入到主世界
+// -----------------------------------------------------------------------
 try {
-  // 1. 移除 webdriver 属性
-  Object.defineProperty(navigator, 'webdriver', {
-    get: () => undefined
-  });
-
-  // 2. 伪装 Chrome 插件列表 (可选，增强伪装)
-  if (!navigator.plugins || navigator.plugins.length === 0) {
-     Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5],
-     });
-  }
-
+    webFrame.executeJavaScript(stealthScript);
 } catch (e) {
-  console.error('Failed to spoof navigator properties', e);
+    console.error('Stealth injection failed:', e);
 }
 
 // 默认文本
@@ -35,7 +214,7 @@ let i18n = {
 };
 
 let toolbar = null;
-let resultBox = null; // 新增：结果显示容器
+let resultBox = null;
 let currentSelection = '';
 
 // 初始化 DOM
@@ -50,8 +229,8 @@ function initToolbar() {
             z-index: 2147483647;
             background: #222;
             color: #fff;
-            border-radius: 8px; /* 圆角稍微大一点 */
-            padding: 6px;       /* 整体内边距增加 */
+            border-radius: 8px;
+            padding: 6px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             display: none;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -59,11 +238,11 @@ function initToolbar() {
             user-select: none;
             flex-direction: column;
             align-items: flex-start;
-            transition: opacity 0.2s, top 0.2s, left 0.2s; /* 增加位置平滑过渡 */
+            transition: opacity 0.2s, top 0.2s, left 0.2s;
             pointer-events: auto;
-            max-width: 380px; /* 稍微限制宽度，防止太宽 */
+            max-width: 380px;
             width: auto;
-            box-sizing: border-box; /* 关键：防止padding撑大 */
+            box-sizing: border-box;
         }
         
         .sap-btn-row {
@@ -101,39 +280,28 @@ function initToolbar() {
             margin: 0 2px;
         }
 
-        /* 结果显示区域 - 重点优化的部分 */
         #sap-ai-result {
             display: none;
             width: 100%;
-            min-width: 240px; /* 最小宽度增加 */
+            min-width: 240px;
             max-height: 300px;
             overflow-y: auto;
-            
-            /* 布局与边距 */
-            box-sizing: border-box; /* 关键 */
-            padding: 10px 12px;     /* 上下10px，左右12px，留足空间 */
+            box-sizing: border-box;
+            padding: 10px 12px;
             margin-top: 8px;
-            
-            /* 外观 */
-            background-color: rgba(255, 255, 255, 0.05); /* 微微发亮的背景 */
+            background-color: rgba(255, 255, 255, 0.05);
             border-radius: 6px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            
-            /* 文字排版 */
             font-size: 13px;
             line-height: 1.6;
             color: #e0e0e0;
-            
-            /* 强制换行规则 */
-            white-space: pre-wrap;       /* 保留换行 */
-            word-wrap: break-word;       /* 旧版兼容 */
-            overflow-wrap: break-word;   /* 标准换行 */
-            word-break: break-word;      /* 防止长单词溢出 */
-            
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
             user-select: text;
         }
         
-        /* 滚动条美化 */
         #sap-ai-result::-webkit-scrollbar {
             width: 6px;
         }
@@ -160,7 +328,7 @@ function initToolbar() {
             color: #888;
             cursor: pointer;
             margin-left: 8px;
-            margin-bottom: 4px; /* 增加下边距，防止跟文字挤在一起 */
+            margin-bottom: 4px;
             font-size: 16px;
             line-height: 14px;
             font-weight: bold;
@@ -200,7 +368,6 @@ function renderToolbarUI() {
 
     resultBox = document.getElementById('sap-ai-result');
 
-    // 绑定点击
     document.getElementById('ai-btn-trans').onclick = () => sendAction('translate');
     document.getElementById('ai-btn-ask').onclick = () => sendAction('ask');
     document.getElementById('ai-btn-read').onclick = () => sendAction('read');
@@ -213,14 +380,11 @@ function renderToolbarUI() {
 function sendAction(action) {
     if (currentSelection) {
         ipcRenderer.sendToHost('ai-toolbar-action', { action, text: currentSelection });
-        // 如果是翻译，保持工具栏显示，并进入加载状态
         if (action === 'translate') {
             showLoadingState();
         } else if (action === 'read') {
-            // 朗读也可以保持显示，或者隐藏，看你喜好
-            // hideToolbar(); 
+            // read action
         } else {
-            // Ask AI 会去侧边栏，这里可以隐藏
             hideToolbar();
         }
     }
@@ -235,7 +399,6 @@ function showLoadingState() {
 function hideToolbar() {
     if (toolbar) {
         toolbar.style.display = 'none';
-        // 重置结果框
         if (resultBox) {
             resultBox.classList.remove('active');
             resultBox.innerHTML = '';
@@ -257,11 +420,7 @@ function bindEvents() {
                 const rect = range.getBoundingClientRect();
 
                 if (toolbar) {
-                    // 如果结果框是打开的，说明正在看上一次的结果，不要因为重新划词而乱动位置，
-                    // 除非用户点击了页面其他地方（上面的 if toolbar.contains 已经处理了）
-                    // 但这里策略是：新划词 = 重置工具栏
                     if (resultBox && resultBox.classList.contains('active')) {
-                        // 如果正在显示结果，这时候划新词，可以先隐藏旧结果
                         resultBox.classList.remove('active');
                     }
 
@@ -302,18 +461,15 @@ ipcRenderer.on('set-i18n', (event, data) => {
     }
 });
 
-// --- 新增：接收流式数据的监听器 ---
 ipcRenderer.on('ai-stream-start', () => {
     if (resultBox) {
-        resultBox.innerHTML = ''; // 清空加载中提示
-        // 添加一个关闭按钮
+        resultBox.innerHTML = '';
         const closeBtn = document.createElement('span');
         closeBtn.className = 'result-close-btn';
         closeBtn.innerHTML = '&times;';
         closeBtn.onclick = (e) => { e.stopPropagation(); hideToolbar(); };
         resultBox.appendChild(closeBtn);
         
-        // 内容容器
         const contentSpan = document.createElement('span');
         contentSpan.id = 'sap-stream-content';
         resultBox.appendChild(contentSpan);
@@ -323,13 +479,10 @@ ipcRenderer.on('ai-stream-start', () => {
 ipcRenderer.on('ai-stream-chunk', (event, text) => {
     const contentSpan = document.getElementById('sap-stream-content');
     if (contentSpan) {
-        // 简单处理换行
         contentSpan.innerText += text;
-        // 自动滚动到底部
         if (resultBox) resultBox.scrollTop = resultBox.scrollHeight;
     }
 });
 
 ipcRenderer.on('ai-stream-end', () => {
-    // 结束时的处理，比如光标闪烁停止等，这里暂时不用做特别处理
 });

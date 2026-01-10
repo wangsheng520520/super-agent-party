@@ -12334,18 +12334,6 @@ async togglePlugin(plugin) {
             this.dropdownTimer = null;
         }, 300); 
     },
-    async handlechromeMCPTypeChange() {
-        // 1. 先保存用户的选择
-        await window.electronAPI.saveChromeSettings(JSON.parse(JSON.stringify(this.chromeMCPSettings)));
-        await this.autoSaveSettings();
-        // 2. 如果切换到了“内置浏览器” (Internal)
-        if (this.chromeMCPSettings.type === 'internal') {
-          this.showRestartDialog = true;
-        } else {
-            // 如果切回 External，不需要重启，直接保存即可
-            // 此时如果端口还开着也没关系，Python 不连它就行
-        }
-    },
 
     async initChromeMCPSettings() {
         if (!window.electronAPI) return;
