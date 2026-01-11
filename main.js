@@ -995,7 +995,6 @@ app.whenReady().then(async () => {
         y,
         transparent: true,
         frame: false,
-        resizable: false,
         alwaysOnTop: true,
         skipTaskbar: true,
         hasShadow: false,
