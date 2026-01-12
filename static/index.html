@@ -711,43 +711,43 @@ function updateElement(el, rawMarkdown, formatFn) {
                 v-show="chatAreaOpen">
               <div class="messages-container" ref="messagesContainer"   v-if="!isCapsuleMode" @click.capture="handleMessageLinkClick">
                 <div v-for="(message, index) in messages" :key="index" class="message" :class="message.role">
-                  <div v-if="ttsSettings.enabled && message.role === 'assistant'" class="tts-controls">
-                    <el-tooltip :content="message.isPlaying || false ? t('pause') : t('play')">
-                      <el-button 
-                        @click="toggleTTS(message)"
-                        circle 
-                        size="small"
-                      >
-                        <i v-if="!message.isPlaying" class="fa-solid fa-play"></i>
-                        <i v-else class="fa-solid fa-pause"></i>
+                  <!-- TTS 控制区：支持普通 TTS 和 Omni (PCM) -->
+                  <div v-if="(ttsSettings.enabled || settings.enableOmniTTS) && message.role === 'assistant'" class="tts-controls">
+                    <!-- 播放/暂停 -->
+                    <el-tooltip :content="message.isPlaying ? t('pause') : t('play')">
+                      <el-button @click="toggleTTS(message)" circle size="small">
+                        <i :class="message.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
                       </el-button>
                     </el-tooltip>
-                    <el-tooltip :content="t('backward')">
-                      <el-button 
-                        @click="backwardTTS(message)"
-                        circle 
-                        size="small"
-                      >
-                        <i class="fa-solid fa-backward"></i>
-                      </el-button>
-                    </el-tooltip>
-                    <el-tooltip :content="t('forward')">
-                      <el-button 
-                        @click="forwardTTS(message)"
-                        circle 
-                        size="small"
-                      >
-                        <i class="fa-solid fa-forward"></i>
-                      </el-button>
-                    </el-tooltip>
-                    <span class="tts-status" v-if="message.ttsChunks">
-                      {{ (message.currentChunk || 0) + 1 }}/{{ message.ttsChunks.length }}
-                    </span>
-                    <span class="tts-status" v-else>
-                      {{ t('initializing') }}
-                    </span>
-                    <span class="tts-status" v-if="message.role === 'assistant' && !isMobile">
-                      {{ t('first_sentence_latency')+': '+(message?.first_sentence_latency ?? 0) +'ms,    '+ t('TTSelapsedTime')+': '+(message?.TTSelapsedTime ?? 0) + 's'}}
+
+                    <!-- 普通 TTS 分句控制 -->
+                    <template v-if="!message.isOmni">
+                      <el-button @click="backwardTTS(message)" circle size="small"><i class="fa-solid fa-backward"></i></el-button>
+                      <el-button @click="forwardTTS(message)" circle size="small"><i class="fa-solid fa-forward"></i></el-button>
+                      <span class="tts-status" v-if="message.ttsChunks">
+                        {{ (message.currentChunk || 0) + 1 }}/{{ message.ttsChunks.length }}
+                      </span>
+                    </template>
+
+                    <!-- Omni PCM 进度条控制 -->
+                    <template v-else>
+                      <div class="omni-progress-wrapper" style="margin-left: 20px;">
+                        <el-slider 
+                          v-model="message.omniCurrentTime" 
+                          :max="message.omniDuration > 0 ? message.omniDuration : 0.1" 
+                          :step="0.01"
+                          :show-tooltip="false"
+                          @change="(val) => seekOmniTTS(message, val)"
+                        />
+                        <span class="tts-status-time">
+                          {{ (message.omniCurrentTime || 0).toFixed(1) }}s / {{ (message.omniDuration || 0).toFixed(1) }}s
+                        </span>
+                      </div>
+                    </template>
+                    
+                    <!-- 延迟统计 -->
+                    <span class="tts-status" v-if="!isMobile">
+                      {{ (message?.first_sentence_latency ?? 0) }}ms
                     </span>
                   </div>
                   <div class="message-content" :class="{ typing: message.role === 'assistant' && isTyping && index === messages.length - 1 }">

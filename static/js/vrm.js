@@ -1659,42 +1659,18 @@ function toggleSubtitle(enable) {
     }
 }
 
-function updateSubtitle(text, chunkIndex) {
-    if (!isSubtitleEnabled) return;
+/**
+ * 提取出的尺寸调整逻辑
+ */
+function adjustSubtitleSize() {
+    if (!subtitleElement) return;
+    const maxWidth = window.innerWidth * 0.8;
+    subtitleElement.style.width = 'max-content';
+    subtitleElement.style.minWidth = '100px';
     
-    if (!subtitleElement) initSubtitleElement();
-    // 如果text只包含空白字符，则清除字幕
-    if (!text.trim()) {
-        clearSubtitle();
-        return;
-    }
-    currentSubtitleChunkIndex = chunkIndex;
-    
-    subtitleElement.style.opacity = '0';
-    setTimeout(() => {
-        subtitleElement.textContent = text;
-        
-        // 自动调整宽度
-        const maxWidth = window.innerWidth * 0.8;
-        subtitleElement.style.width = 'max-content';
-        subtitleElement.style.minWidth = '100px';
-        
-        const rect = subtitleElement.getBoundingClientRect();
-        if (rect.width > maxWidth) {
-            subtitleElement.style.width = `${maxWidth}px`;
-        }
-        
-        subtitleElement.style.opacity = '1';
-    }, 300);
-    
-    if (subtitleTimeout) clearTimeout(subtitleTimeout);
-}
-
-// 清除字幕
-function clearSubtitle() {
-    if (subtitleElement) {
-        subtitleElement.style.opacity = '0';
-        currentSubtitleChunkIndex = -1;
+    const rect = subtitleElement.getBoundingClientRect();
+    if (rect.width > maxWidth) {
+        subtitleElement.style.width = `${maxWidth}px`;
     }
 }
 
@@ -3314,57 +3290,218 @@ function sendToMain(type, data) {
     }
 }
 
-// 修改 handleTTSMessage 函数
+let fullTargetText = "";          // 记录当前对话收到的所有文本
+let currentVisibleCount = 0;      // 当前已显示的字符数
+let typewriterTimer = null;       // 打字机计时器
+let isOmniMode = false;           // 是否处于 Omni 流模式
+let omniNextStartTime = 0;        // 预估的音频流结束时间点
+
 function handleTTSMessage(message) {
     const { type, data } = message;
 
     switch (type) {
         case 'ttsStarted':
-            console.log('TTS 流程开始');
-            stopAllChunkAnimations(); // 停止所有之前的口型动画
+            isOmniMode = false;
+            fullTargetText = "";
+            currentVisibleCount = 0;
+            omniNextStartTime = 0;
+            stopTypewriterLoop();
+            stopAllChunkAnimations();
             clearSubtitle();
             break;
 
-        case 'startSpeaking':
-            console.log('收到播放指令, Chunk:', data.chunkIndex);
-            if (windowName == 'default'){
-                // 调用新的口型同步函数
-                startLipSyncForChunk(data); 
-                if (data.text) {
-                    updateSubtitle(data.text, data.chunkIndex);
-                }
-            }else if (windowName == data.voice){
-                // 调用新的口型同步函数
-                startLipSyncForChunk(data); 
-                if (data.text) {
-                    updateSubtitle(data.text, data.chunkIndex);
-                }
+        case 'omniStreaming':
+            if (windowName === 'default') {
+                isOmniMode = true;
+                if (data.text) fullTargetText = data.text;
+                if (data.audioData) processOmniStreaming(data);
+                startTypewriterLoop();
             }
             break;
 
-        case 'chunkEnded':
-            // 注意：现在音频播放结束时会自动停止，所以这个消息的处理可以简化
-            console.log('后端通知 Chunk 结束:', data.chunkIndex);
-            // 如果字幕仍然显示的是这个 chunk 的，就清除它
-            if (currentSubtitleChunkIndex === data.chunkIndex) {
-                clearSubtitle();
+        case 'startSpeaking':
+            // 传统 TTS 逻辑
+            if (windowName === 'default' || windowName === data.voice) {
+                isOmniMode = false;
+                startLipSyncForChunk(data); 
+                if (data.text) {
+                    updateSubtitle(data.text, data.chunkIndex);
+                }
             }
             break;
 
         case 'stopSpeaking':
-            console.log('收到停止指令');
-            stopAllChunkAnimations();
-            clearSubtitle();
+            isOmniMode = false;
+            stopTypewriterLoop();
+            finalizeSpeech(true); 
             break;
 
         case 'allChunksCompleted':
-            console.log('所有 TTS 语音块处理完成');
-            // stopAllChunkAnimations 会在最后一个 chunk 结束时自动调用并重置表情
-            // 这里可以确保万无一失
-            stopAllChunkAnimations();
-            clearSubtitle();
-            sendToMain('animationComplete', { status: 'completed' });
+            isOmniMode = false; 
+            // 如果字还没打完，打字机循环会继续跑，直到跑完自动调用 finalizeSpeech
+            if (currentVisibleCount >= fullTargetText.length) {
+                finalizeSpeech(false);
+            }
             break;
+            
+        case 'chunkEnded':
+            if (currentSubtitleChunkIndex === data.chunkIndex && !isOmniMode) {
+                clearSubtitle();
+            }
+            break;
+    }
+}
+
+// ==========================================
+// 3. 动态打字机逻辑
+// ==========================================
+function startTypewriterLoop() {
+    if (typewriterTimer) return;
+
+    function type() {
+        const pendingChars = fullTargetText.length - currentVisibleCount;
+        
+        if (pendingChars > 0) {
+            // 获取当前音频播放进度
+            const now = currentAudioContext ? currentAudioContext.currentTime : 0;
+            const remainingAudioTime = Math.max(0, omniNextStartTime - now);
+
+            // 计算理想延迟: 剩余时间 / 剩余字数
+            let idealDelay = (remainingAudioTime / pendingChars) * 1000;
+
+            if (remainingAudioTime <= 0) {
+                idealDelay = 150; // 音频播完后，按固定语速收尾
+            }
+            
+            // 速度限制：最快 60ms，最慢 400ms
+            const finalDelay = Math.min(Math.max(idealDelay, 60), 400);
+
+            currentVisibleCount++;
+            
+            // 滚动窗口逻辑 (显示最近 45 个字符)
+            const windowSize = 45;
+            const start = Math.max(0, currentVisibleCount - windowSize);
+            const displayText = fullTargetText.slice(start, currentVisibleCount);
+            
+            renderSubtitleUI((start > 0 ? "..." : "") + displayText);
+
+            typewriterTimer = setTimeout(type, finalDelay);
+        } else {
+            typewriterTimer = null;
+            // 如果音频也放完了，触发最终清理
+            if (!isOmniMode) {
+                finalizeSpeech(false);
+            }
+        }
+    }
+    type();
+}
+
+function stopTypewriterLoop() {
+    if (typewriterTimer) {
+        clearTimeout(typewriterTimer);
+        typewriterTimer = null;
+    }
+}
+
+// ==========================================
+// 4. 音频流处理 (Omni 模式)
+// ==========================================
+async function processOmniStreaming(data) {
+    const chunkId = 'omni_live_stream';
+    
+    try {
+        if (!currentAudioContext) {
+            currentAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (currentAudioContext.state === 'suspended') await currentAudioContext.resume();
+
+        let state = chunkAnimations.get(chunkId);
+        if (!state) {
+            state = { 
+                isPlaying: true, 
+                analyser: currentAudioContext.createAnalyser(), 
+                expression: 'neutral' 
+            };
+            state.analyser.fftSize = 256;
+            state.analyser.connect(currentAudioContext.destination);
+            chunkAnimations.set(chunkId, state);
+            startChunkAnimation(chunkId, state);
+            omniNextStartTime = currentAudioContext.currentTime;
+        }
+
+        const raw = atob(data.audioData);
+        const pcm16 = new Int16Array(raw.length / 2);
+        for (let i = 0; i < raw.length; i += 2) {
+            pcm16[i >> 1] = raw.charCodeAt(i) | (raw.charCodeAt(i + 1) << 8);
+        }
+        
+        const buffer = currentAudioContext.createBuffer(1, pcm16.length, data.sampleRate || 24000);
+        const floatData = buffer.getChannelData(0);
+        for (let i = 0; i < pcm16.length; i++) {
+            floatData[i] = pcm16[i] / 32768;
+        }
+
+        const source = currentAudioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(state.analyser);
+
+        const now = currentAudioContext.currentTime;
+        if (omniNextStartTime < now) omniNextStartTime = now;
+        
+        source.start(omniNextStartTime);
+        omniNextStartTime += buffer.duration;
+    } catch (e) {
+        console.error('Omni Streaming Error:', e);
+    }
+}
+
+// ==========================================
+// 5. 字幕渲染与清理
+// ==========================================
+function renderSubtitleUI(text) {
+    if (!isSubtitleEnabled) return;
+    if (!subtitleElement) initSubtitleElement();
+    
+    subtitleElement.textContent = text;
+    subtitleElement.style.opacity = '1';
+    adjustSubtitleSize();
+}
+
+function updateSubtitle(text, chunkIndex) {
+    // 兼容传统 TTS 的字幕显示
+    if (!isSubtitleEnabled || !text.trim()) return;
+    renderSubtitleUI(text);
+    currentSubtitleChunkIndex = chunkIndex;
+}
+
+function clearSubtitle() {
+    if (subtitleElement) {
+        subtitleElement.style.transition = 'opacity 0.5s ease';
+        subtitleElement.style.opacity = '0';
+    }
+}
+
+function finalizeSpeech(immediate = false) {
+    stopAllChunkAnimations();
+    if (chunkAnimations.has('omni_live_stream')) {
+        stopChunkAnimation('omni_live_stream');
+        chunkAnimations.delete('omni_live_stream');
+    }
+
+    if (immediate) {
+        clearSubtitle();
+        fullTargetText = "";
+        currentVisibleCount = 0;
+    } else {
+        if (subtitleTimeout) clearTimeout(subtitleTimeout);
+        subtitleTimeout = setTimeout(() => {
+            if (!isOmniMode) {
+                clearSubtitle();
+                fullTargetText = "";
+                currentVisibleCount = 0;
+            }
+        }, 1500);
     }
 }
 

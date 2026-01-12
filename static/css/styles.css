@@ -6864,3 +6864,44 @@ hr.footnotes-sep {
 .new-tab-inline:active {
   background-color: var(--el-fill-color-darker);
 }
+
+/* 进度条外层容器 */
+.omni-progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;       /* 占据剩余空间 */
+  min-width: 120px; /* 强制给一个最小宽度 */
+  margin: 0 10px;
+}
+
+/* 强制显示进度条轨道 */
+.omni-progress-wrapper :deep(.el-slider) {
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.omni-progress-wrapper :deep(.el-slider__runway) {
+  flex: 1;
+  height: 4px !important;
+  background-color: rgba(0, 0, 0, 0.1) !important; /* 轨道背景色 */
+  border-radius: 2px;
+}
+
+.omni-progress-wrapper :deep(.el-slider__bar) {
+  height: 4px !important;
+  background-color: var(--el-color-primary) !important; /* 进度填充色 */
+  border-radius: 2px;
+}
+
+.omni-progress-wrapper :deep(.el-slider__button-wrapper) {
+  top: -14px; /* 调整滑块圆圈的位置 */
+}
+
+.tts-status-time {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
