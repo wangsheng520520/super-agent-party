@@ -92,6 +92,11 @@ let vue_data = {
     isMaximized: false,
     hasUpdate: false,
     updateSuccess: false,
+    audioCtx: null,          // WebAudio 上下文
+    activeSources: [], 
+    audioStartTime: 0,       // 下一帧应该开始的时间
+    omniQueue: [],        // [{idx, text, expressions, voice, pcmBase64}, ...]
+    omniIdx: 0,           // 当前正在播的索引
     settings: {
       model: '',
       base_url: '',
@@ -102,6 +107,8 @@ let vue_data = {
       selectedProvider: null,
       top_p: 1,
       reasoning_effort: null,
+      enableOmniTTS: false,// 是否启用omniTTS
+      omniVoice: 'Cherry', // omniTTS的语音
       extra_params: [], // 额外参数
     },
     reasonerSettings: {

@@ -711,46 +711,46 @@ function updateElement(el, rawMarkdown, formatFn) {
                 v-show="chatAreaOpen">
               <div class="messages-container" ref="messagesContainer"   v-if="!isCapsuleMode" @click.capture="handleMessageLinkClick">
                 <div v-for="(message, index) in messages" :key="index" class="message" :class="message.role">
-                  <div v-if="ttsSettings.enabled && message.role === 'assistant'" class="tts-controls">
-                    <el-tooltip :content="message.isPlaying || false ? t('pause') : t('play')">
-                      <el-button 
-                        @click="toggleTTS(message)"
-                        circle 
-                        size="small"
-                      >
-                        <i v-if="!message.isPlaying" class="fa-solid fa-play"></i>
-                        <i v-else class="fa-solid fa-pause"></i>
+                  <!-- TTS 控制区：支持普通 TTS 和 Omni (PCM) -->
+                  <div v-if="(ttsSettings.enabled || settings.enableOmniTTS) && message.role === 'assistant'" class="tts-controls">
+                    <!-- 播放/暂停 -->
+                    <el-tooltip :content="message.isPlaying ? t('pause') : t('play')">
+                      <el-button @click="toggleTTS(message)" circle size="small">
+                        <i :class="message.isPlaying ? 'fa-solid fa-pause' : 'fa-solid fa-play'"></i>
                       </el-button>
                     </el-tooltip>
-                    <el-tooltip :content="t('backward')">
-                      <el-button 
-                        @click="backwardTTS(message)"
-                        circle 
-                        size="small"
-                      >
-                        <i class="fa-solid fa-backward"></i>
-                      </el-button>
-                    </el-tooltip>
-                    <el-tooltip :content="t('forward')">
-                      <el-button 
-                        @click="forwardTTS(message)"
-                        circle 
-                        size="small"
-                      >
-                        <i class="fa-solid fa-forward"></i>
-                      </el-button>
-                    </el-tooltip>
-                    <span class="tts-status" v-if="message.ttsChunks">
-                      {{ (message.currentChunk || 0) + 1 }}/{{ message.ttsChunks.length }}
-                    </span>
-                    <span class="tts-status" v-else>
-                      {{ t('initializing') }}
-                    </span>
-                    <span class="tts-status" v-if="message.role === 'assistant' && !isMobile">
-                      {{ t('first_sentence_latency')+': '+(message?.first_sentence_latency ?? 0) +'ms,    '+ t('TTSelapsedTime')+': '+(message?.TTSelapsedTime ?? 0) + 's'}}
+
+                    <!-- 普通 TTS 分句控制 -->
+                    <template v-if="!message.isOmni">
+                      <el-button @click="backwardTTS(message)" circle size="small"><i class="fa-solid fa-backward"></i></el-button>
+                      <el-button @click="forwardTTS(message)" circle size="small"><i class="fa-solid fa-forward"></i></el-button>
+                      <span class="tts-status" v-if="message.ttsChunks">
+                        {{ (message.currentChunk || 0) + 1 }}/{{ message.ttsChunks.length }}
+                      </span>
+                    </template>
+
+                    <!-- Omni PCM 进度条控制 -->
+                    <template v-else>
+                      <div class="omni-progress-wrapper" style="margin-left: 20px;">
+                        <el-slider 
+                          v-model="message.omniCurrentTime" 
+                          :max="message.omniDuration > 0 ? message.omniDuration : 0.1" 
+                          :step="0.01"
+                          :show-tooltip="false"
+                          @change="(val) => seekOmniTTS(message, val)"
+                        />
+                        <span class="tts-status-time">
+                          {{ (message.omniCurrentTime || 0).toFixed(1) }}s / {{ (message.omniDuration || 0).toFixed(1) }}s
+                        </span>
+                      </div>
+                    </template>
+                    
+                    <!-- 延迟统计 -->
+                    <span class="tts-status" v-if="!isMobile">
+                      {{ (message?.first_sentence_latency ?? 0) }}ms
                     </span>
                   </div>
-                  <div class="message-content" :class="{ typing: message.role === 'assistant' && isTyping && index === messages.length - 1 }">
+                  <div class="message-content" v-if="!allBriefly||message.role !== 'system'||index === 0" :class="{ typing: message.role === 'assistant' && isTyping && index === messages.length - 1 }">
                     <!-- 用户消息内容 -->
                     <div v-if="message.role === 'user'" class="user-content" data-mjx-disabled="true">
                       <div v-html="message.content" class = "user-msg"></div>
@@ -823,7 +823,7 @@ function updateElement(el, rawMarkdown, formatFn) {
                     </div>
                   </div>
                   <!-- 添加复制按钮 -->
-                  <div class="message-actions">
+                  <div class="message-actions" v-if="!allBriefly||message.role !== 'system'||index === 0">
                     <el-tooltip v-if="mainAgent === 'super-model' || message.role !== 'system'" :content="t('edit')" placement="bottom">
                       <el-button @click="openEditDialog(message.role, message.content,index)" circle size="small">
                         <i class="fa-solid fa-pen-to-square"></i>
@@ -871,7 +871,7 @@ function updateElement(el, rawMarkdown, formatFn) {
                         <i class="fa-solid fa-rotate"></i>
                       </el-button>
                     </el-tooltip>
-                    <el-tooltip v-if="message.role === 'system'" :content="t('oneClickExpand')" placement="bottom">
+                    <el-tooltip v-if="message.role === 'system'&&index == 0" :content="t('oneClickExpand')" placement="bottom">
                       <el-button 
                         class="Gen-btn" 
                         @click="toggleQuickGen(index)"
@@ -881,7 +881,7 @@ function updateElement(el, rawMarkdown, formatFn) {
                         <i class="fa-solid fa-wand-magic-sparkles"></i>
                       </el-button>
                     </el-tooltip>
-                    <el-tooltip v-if="message.role === 'system'" :content="t('save')" placement="bottom">
+                    <el-tooltip v-if="message.role === 'system'&&index == 0" :content="t('save')" placement="bottom">
                       <el-button 
                         class="Gen-btn" 
                         @click="saveSystemPrompt(index)"
@@ -4410,6 +4410,24 @@ function updateElement(el, rawMarkdown, formatFn) {
                             </div>
                           </el-option>
                         </el-select>
+                      </el-form-item>
+                      <el-form-item :label="t('enableOmniTTS')" class="form-item-align" label-position="left">
+                        <el-switch 
+                          v-model="settings.enableOmniTTS" 
+                          @change="autoSaveSettings"
+                        ></el-switch>
+                      </el-form-item>
+                      <el-form-item v-if="settings.enableOmniTTS" :label="t('enabledInterruption')" class="form-item-align" label-position="left">
+                        <el-switch 
+                          v-model="ttsSettings.enabledInterruption" 
+                          @change="autoSaveSettings"
+                        ></el-switch>
+                      </el-form-item>
+                      <el-form-item v-if="settings.enableOmniTTS" :label="t('omniVoice')" class="form-item-align" label-position="left">
+                        <el-input
+                          v-model="settings.omniVoice"
+                          :placeholder="t('omniVoicePlaceholder')"
+                        ></el-input>
                       </el-form-item>
                     </div>
                       <el-alert
