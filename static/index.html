@@ -6683,7 +6683,7 @@ function updateElement(el, rawMarkdown, formatFn) {
               <!-- 浏览器控制界面 -->
               <div v-show="subMenu === 'chromeMCP'" class="page">
                <!-- 顶部说明条 -->
-                <div class="toolbar">
+                <div v-if="isElectron" class="toolbar">
                     <el-alert
                       :title="t('chromeMCPDescription')"
                       type="info"
@@ -6695,7 +6695,7 @@ function updateElement(el, rawMarkdown, formatFn) {
                       3. {{ t('chromeMCPNotice3') }}
                     </el-alert>
                 </div>
-                <el-form :model="chromeMCPSettings" class="settings-form"  label-position="top">
+                <el-form v-if="isElectron" :model="chromeMCPSettings" class="settings-form"  label-position="top">
                   <div class="tool-item">
                     <div class="tool-header">
                       <div class="header-left">
@@ -6821,6 +6821,10 @@ function updateElement(el, rawMarkdown, formatFn) {
                     />
                   </el-card>
                 </el-form> 
+                <!-- Web端提示 -->
+                <div v-else >
+                  <el-empty :description="t('webNotSupported')" />
+                </div>
               </div>
               
               <!-- SQL控制界面 -->
