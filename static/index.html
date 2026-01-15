@@ -3147,7 +3147,7 @@ function updateElement(el, rawMarkdown, formatFn) {
                           </el-select>
                         </el-form-item>
                         <!-- 提示音频选择框 -->
-                        <el-form-item :label="t('gsvPromptAudio')" class="form-item-align">
+                        <el-form-item :label="t('promptAudio')" class="form-item-align">
                           <el-select
                             v-model="newTTSConfig.gsvRefAudioPath"
                             @change="handleRefAudioPathChange"
@@ -5657,7 +5657,7 @@ function updateElement(el, rawMarkdown, formatFn) {
                         </el-select>
                       </el-form-item>
                       <!-- 提示音频选择框 -->
-                      <el-form-item :label="t('gsvPromptAudio')" class="form-item-align">
+                      <el-form-item :label="t('promptAudio')" class="form-item-align">
                         <el-select
                           v-model="ttsSettings.gsvRefAudioPath"
                           @change="handleRefAudioPathChange"
